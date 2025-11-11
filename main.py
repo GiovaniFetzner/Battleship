@@ -1,14 +1,14 @@
 import pygame
-from config import *
-from grid import desenhar_grid
-from sidebar import desenhar_sidebar
-from tabuleiro import Tabuleiro
+from front.config import *
+from front.grid import desenhar_grid
+from front.sidebar import desenhar_sidebar
+from front.tabuleiro import Tabuleiro
 
 # Importa barcos
-from barcos.lancha import Lancha
-from barcos.submarino import Submarino
-from barcos.bombardeiro import Bombardeiro
-from barcos.porta_avioes import PortaAvioes
+from front.barcos.lancha import Lancha
+from front.barcos.submarino import Submarino
+from front.barcos.bombardeiro import Bombardeiro
+from front.barcos.porta_avioes import PortaAvioes
 
 
 def main():

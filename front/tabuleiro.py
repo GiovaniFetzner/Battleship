@@ -1,5 +1,5 @@
 import random
-from barcos.barco_base import Barco
+from front.barcos.barco_base import Barco
 
 class Tabuleiro:
     def __init__(self, linhas, colunas):

@@ -1,5 +1,5 @@
 import pygame
-from config import TAMANHO_CELULA, LINHAS, COLUNAS, LARGURA_GRID, ALTURA_GRID, COR_GRID
+from front.config import TAMANHO_CELULA, LINHAS, COLUNAS, LARGURA_GRID, ALTURA_GRID, COR_GRID
 
 def desenhar_grid(tela):
     for i in range(LINHAS + 1):

@@ -1,5 +1,5 @@
 import pygame
-from config import TAMANHO_CELULA
+from front.config import TAMANHO_CELULA
 
 class Barco:
     def __init__(self, nome, tamanho, cor, x=0, y=0, horizontal=True):
