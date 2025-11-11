@@ -55,9 +55,6 @@ def udp_listener():
         # registra IP de origem
         participantes.add(addr[0])
 
-        # opcional: responder via TCP com uma mensagem simples
-        # send_tcp_raw(addr[0], TCP_PORT_SERVER, b"OK from client")
-
 def anunciar_broadcast():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)

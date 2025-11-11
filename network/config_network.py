@@ -1,4 +1,4 @@
-MODO_TESTE_LOCAL = True  # ← mude para False quando for jogar em máquinas diferentes
+MODO_TESTE_LOCAL = True  # ← Mudar para False quando for jogar em máquinas diferentes
 
 if MODO_TESTE_LOCAL:
     # modo local: portas separadas para evitar conflito no Windows

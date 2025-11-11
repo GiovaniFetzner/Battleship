@@ -57,9 +57,16 @@ def udp_listener():
 
         # registra IP de origem para futuros envios
         participantes.add(addr[0])
-
-        # exemplo: responder por TCP com uma mensagem simples (opcional)
-        # send_tcp_raw(addr[0], TCP_PORT_CLIENT, b"OK: participe registrado")
+        
+        mensagem_tcp = f"participantes: {participantes}"
+        try:
+            tcp_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            tcp_conn.connect((addr[0], TCP_PORT_SERVER))  
+            tcp_conn.sendall(mensagem_tcp.encode())
+            tcp_conn.close()
+            print(f"[TCP] Enviada lista para {addr[0]}: {mensagem_tcp}")
+        except Exception as e:
+            print(f"[ERRO TCP] Falha ao enviar lista para {addr[0]}: {e}")
 
 def anunciar_broadcast():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
