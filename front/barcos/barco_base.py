@@ -10,6 +10,26 @@ class Barco:
         self.y = y
         self.horizontal = horizontal
         self.imagem = None
+        self.acertos = set()  # Posições atingidas (x, y)
+
+    # ----------------------------
+    # LÓGICA DE JOGO
+    # ----------------------------
+    def get_posicoes(self):
+        """Retorna todas as células ocupadas pelo barco."""
+        return [
+            (self.x + i, self.y) if self.horizontal else (self.x, self.y + i)
+            for i in range(self.tamanho)
+        ]
+
+    def registrar_atingido(self, x, y):
+        """Marca uma célula como atingida, se for parte do barco."""
+        if (x, y) in self.get_posicoes():
+            self.acertos.add((x, y))
+
+    def destruido(self):
+        """Retorna True se todas as partes foram atingidas."""
+        return len(self.acertos) >= self.tamanho
 
     def desenhar(self, tela):
         if self.imagem:
@@ -25,14 +45,12 @@ class Barco:
                 px = (self.x + i) * TAMANHO_CELULA if self.horizontal else self.x * TAMANHO_CELULA
                 py = self.y * TAMANHO_CELULA if self.horizontal else (self.y + i) * TAMANHO_CELULA
                 rect = pygame.Rect(px, py, TAMANHO_CELULA, TAMANHO_CELULA)
-                pygame.draw.rect(tela, self.cor, rect)
+
+                # Cor muda se célula foi atingida
+                cor = (100, 100, 100) if (self.x + i, self.y) in self.acertos or (self.x, self.y + i) in self.acertos else self.cor
+                pygame.draw.rect(tela, cor, rect)
                 pygame.draw.rect(tela, (200, 200, 200), rect, 1)
 
-    def get_posicoes(self):
-        return [
-            (self.x + i, self.y) if self.horizontal else (self.x, self.y + i)
-            for i in range(self.tamanho)
-        ]
 
 def carregar_imagem(nome_arquivo, tamanho_celulas, horizontal=True):
     """Carrega e ajusta uma imagem de barco conforme o tamanho e a orientação."""
