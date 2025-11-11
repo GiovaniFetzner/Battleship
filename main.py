@@ -10,6 +10,8 @@ from front.barcos.submarino import Submarino
 from front.barcos.bombardeiro import Bombardeiro
 from front.barcos.porta_avioes import PortaAvioes
 
+# Importa gerenciador de conexão
+from network.conexao import GerenciadorConexao
 
 def main():
     pygame.init()
@@ -17,12 +19,15 @@ def main():
     pygame.display.set_caption("Batalha Naval")
     relogio = pygame.time.Clock()
 
-    tabuleiro = Tabuleiro(LINHAS, COLUNAS)
+    # --- Inicializa rede ---
+    conexao = GerenciadorConexao()
+    conexao.iniciar()
 
-    # Posiciona barcos automaticamente sem sobreposição
+    tabuleiro = Tabuleiro(LINHAS, COLUNAS)
     tipos_barcos = [PortaAvioes, Bombardeiro, Submarino, Lancha, Lancha]
     tabuleiro.posicionar_barcos_automaticamente(tipos_barcos)
 
+    # --- Loop principal ---
     rodando = True
     while rodando:
         for evento in pygame.event.get():
@@ -38,7 +43,6 @@ def main():
         relogio.tick(60)
 
     pygame.quit()
-
 
 if __name__ == "__main__":
     main()
