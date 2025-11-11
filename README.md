@@ -1,1 +1,2 @@
-# OnlineNavalBattle
+# Battleship
+
