@@ -1,6 +1,6 @@
 import pygame
 import random
-from front.config import TAMANHO_CELULA, LINHAS, COLUNAS, LARGURA_GRID, ALTURA_GRID, COR_GRID
+from front.interface import TAMANHO_CELULA, LINHAS, COLUNAS, LARGURA_GRID, ALTURA_GRID, COR_GRID
 from front.barcos.barco_base import Barco
 
 class Tabuleiro:

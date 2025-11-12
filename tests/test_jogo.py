@@ -5,7 +5,7 @@ from front.barcos.lancha import Lancha
 from front.barcos.submarino import Submarino
 from front.barcos.bombardeiro import Bombardeiro
 from front.barcos.porta_avioes import PortaAvioes
-from front.config import TAMANHO_CELULA, LINHAS, COLUNAS
+from front.interface import TAMANHO_CELULA, LINHAS, COLUNAS
 
 pygame.init()
 LARGURA, ALTURA = 600, 600
