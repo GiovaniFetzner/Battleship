@@ -8,22 +8,22 @@ from front.barcos.lancha import Lancha
 from front.barcos.submarino import Submarino
 from front.barcos.bombardeiro import Bombardeiro
 from front.barcos.porta_avioes import PortaAvioes
-from config_network import HOSTS, PLAYER_ID, BROADCAST_MSG, UDP_PORT_SERVER, MODO
+from config_network import HOSTS, PLAYER_ID, UDP_PORT_SERVER
 
 def main():
     pygame.init()
 
-    # --- Cria tela ---
+    # --- Tela ---
     tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
     pygame.display.set_caption(f"Batalha Naval - Jogador {PLAYER_ID}")
-    relogio = pygame.time.Clock()
+    clock = pygame.time.Clock()
 
     # --- Tabuleiro e barcos ---
     tabuleiro = Tabuleiro()
     tipos_barcos = [PortaAvioes, Bombardeiro, Submarino, Lancha]
     tabuleiro.posicionar_barcos_automaticamente(tipos_barcos)
 
-    # --- Interface (HUD + log) ---
+    # --- Interface ---
     interface = Interface()
     jogadores = [
         {"nome": f"Jogador {PLAYER_ID}", "acertos": 0},
@@ -38,7 +38,6 @@ def main():
     sock.bind(('', UDP_PORT_SERVER))
     print(f"[NET] Jogador {PLAYER_ID} escutando na porta {UDP_PORT_SERVER}")
 
-    # --- Função para ouvir mensagens de rede ---
     def ouvir_rede():
         while True:
             try:
@@ -56,15 +55,12 @@ def main():
             except Exception as e:
                 print("[ERRO REDE]", e)
 
-    # --- Inicia thread para ouvir mensagens ---
     threading.Thread(target=ouvir_rede, daemon=True).start()
 
     # --- Loop principal ---
     rodando = True
     tempo_tiro = 0
     intervalo = 2000  # ms entre tiros automáticos
-    clock = pygame.time.Clock()
-
     posicoes_disponiveis = [(x, y) for x in range(tabuleiro.colunas) for y in range(tabuleiro.linhas)]
     random.shuffle(posicoes_disponiveis)
 
@@ -77,17 +73,17 @@ def main():
                 if interface.mouse_sobre_log(pos_mouse):
                     interface.mover_scroll(-evento.y)
 
+        # --- Tiros automáticos ---
         tempo_tiro += clock.get_time()
         if tempo_tiro >= intervalo and posicoes_disponiveis:
             x, y = posicoes_disponiveis.pop()
-
-            # Envia tiro aos outros jogadores
             msg = f"TIRO,{x},{y},{PLAYER_ID}"
             for h in HOSTS:
                 sock.sendto(msg.encode(), (h["ip"], h["porta"]))
             interface.adicionar_log(f"[ENVIO] Tiro ({x},{y}) enviado por J{PLAYER_ID}")
             tempo_tiro = 0
 
+        # --- Verifica derrota ---
         if tabuleiro.todos_destruidos():
             interface.adicionar_log(f"[DERROTA] Jogador {PLAYER_ID} foi derrotado!")
             tela.fill(COR_FUNDO)
@@ -98,6 +94,7 @@ def main():
             pygame.time.wait(3000)
             rodando = False
 
+        # --- Desenho ---
         tela.fill(COR_FUNDO)
         tabuleiro.desenhar(tela)
         interface.desenhar_log(tela)
