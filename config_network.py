@@ -1,48 +1,30 @@
-import os
+import socket
 
-"""
-Configuração de rede para a Batalha Naval
------------------------------------------
-Três modos de operação:
+# --- Configuração da rede entre computadores diferentes ---
+print("[CONFIG] Modo REDE REAL - execução em máquinas diferentes")
 
-MODO_LOCAL
-   - Usa portas diferentes para simular dois jogadores no mesmo PC.
-   - Útil para testes rápidos (sem rede real).
+UDP_PORT_SERVER = UDP_PORT_CLIENT = 5000
+TCP_PORT_SERVER = TCP_PORT_CLIENT = 5001
 
-MODO_DOCKER
-   - Usa as mesmas portas, com broadcast local via rede Docker.
-   - Cada contêiner representa um jogador.
+# --- Configure aqui os IPs reais de cada computador ---
+HOSTS = [
+    {"nome": "jogador1", "ip": "192.168.0.10", "porta": 5000},
+    {"nome": "jogador2", "ip": "192.168.0.11", "porta": 5000}
+    ]
 
-MODO_REDE_REAL
-   - Usa as mesmas portas, broadcast na LAN real.
-   - Para apresentação com máquinas diferentes.
-
-Você pode mudar o modo:
- - Editando a constante MODO abaixo, ou
- - Definindo a variável de ambiente MODO_EXEC (ex: "docker", "local", "rede")
-"""
-
-# Opções possíveis: "local", "docker", "rede"
-MODO = os.getenv("MODO_EXEC", "local").lower()
-
-if MODO == "local":
-    print("[CONFIG] Modo LOCAL - simulação no mesmo PC")
-    UDP_PORT_SERVER = 5000
-    TCP_PORT_SERVER = 5001
-    UDP_PORT_CLIENT = 5002
-    TCP_PORT_CLIENT = 5003
-
-elif MODO == "docker":
-    print("[CONFIG] Modo DOCKER - múltiplos contêineres na mesma rede virtual")
-    UDP_PORT_SERVER = UDP_PORT_CLIENT = 5000
-    TCP_PORT_SERVER = TCP_PORT_CLIENT = 5001
-
-elif MODO == "rede":
-    print("[CONFIG] Modo REDE REAL - execução em máquinas diferentes")
-    UDP_PORT_SERVER = UDP_PORT_CLIENT = 5000
-    TCP_PORT_SERVER = TCP_PORT_CLIENT = 5001
-
+# --- Determinar o ID do jogador ---
+hostname = socket.gethostname().lower()
+PLAYER_ID = 1  # padrão
+for i, h in enumerate(HOSTS, start=1):
+    if h["nome"] in hostname:
+        PLAYER_ID = i
+        break
 else:
-    raise ValueError(f"Modo inválido: {MODO}. Use 'local', 'docker' ou 'rede'.")
+    print("[WARN] PLAYER_ID não identificado automaticamente. Usando jogador 1 por padrão.")
+
+print(f"[INFO] Ambiente: REDE REAL | Player ID: {PLAYER_ID} | Hostname: {hostname}")
+print(f"[INFO] Hosts configurados:")
+for h in HOSTS:
+    print(f"   - {h['nome']} -> {h['ip']}:{h['porta']}")
 
 BROADCAST_MSG = "Conectando"

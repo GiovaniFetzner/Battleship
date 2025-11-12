@@ -58,10 +58,11 @@ class Tabuleiro:
                 else:
                     tentativas += 1
             
-            if colocado:
+            """ if colocado:
                 print(f"[OK] {barco.nome} posicionado em {barco.get_posicoes()} {'H' if horizontal else 'V'}")
             else:
-                print(f"[ERRO] Não foi possível posicionar {tipo_barco.__name__} após {tentativas} tentativas")
+                print(f"[ERRO] Não foi possível posicionar {tipo_barco.__name__} após {tentativas} tentativas") 
+            """
 
             if not colocado:
                 print(f"[!] Falha ao posicionar '{tipo_barco().nome}' após {tentativas} tentativas.")
