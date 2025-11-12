@@ -11,6 +11,7 @@ class Barco:
         self.horizontal = horizontal
         self.imagem = None
         self.acertos = set()  # Posições atingidas (x, y)
+        self.destruido = False
 
     # ----------------------------
     # LÓGICA DE JOGO
@@ -26,10 +27,6 @@ class Barco:
         """Marca uma célula como atingida, se for parte do barco."""
         if (x, y) in self.get_posicoes():
             self.acertos.add((x, y))
-
-    def destruido(self):
-        """Retorna True se todas as partes foram atingidas."""
-        return len(self.acertos) >= self.tamanho
 
     def desenhar(self, tela):
         if self.imagem:
@@ -51,6 +48,15 @@ class Barco:
                 pygame.draw.rect(tela, cor, rect)
                 pygame.draw.rect(tela, (200, 200, 200), rect, 1)
 
+    def receber_tiro(self, x, y):
+        """Registra um tiro e retorna o resultado."""
+        if (x, y) in self.get_posicoes():
+            self.acertos.add((x, y))
+            if len(self.acertos) == self.tamanho:
+                self.destruido = True
+                return "destroyed"
+            return "hit"
+        return None
 
 def carregar_imagem(nome_arquivo, tamanho_celulas, horizontal=True):
     """Carrega e ajusta uma imagem de barco conforme o tamanho e a orientação."""
