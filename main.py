@@ -1,4 +1,3 @@
-import os
 import pygame
 import random
 import socket
@@ -12,21 +11,11 @@ from front.barcos.porta_avioes import PortaAvioes
 from config_network import HOSTS, PLAYER_ID, BROADCAST_MSG, UDP_PORT_SERVER, MODO
 
 def main():
-    # --- Detecta modo headless (Docker) ---
-    HEADLESS = os.environ.get("HEADLESS", "false").lower() == "true"
-    if HEADLESS:
-        os.environ["SDL_VIDEODRIVER"] = "dummy"
-
     pygame.init()
 
-    # --- Cria tela conforme o modo ---
-    if HEADLESS:
-        tela = pygame.display.set_mode((1, 1))
-        print("[HEADLESS] Rodando sem interface gráfica (modo Docker)")
-    else:
-        tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
-        pygame.display.set_caption(f"Batalha Naval - Jogador {PLAYER_ID}")
-
+    # --- Cria tela ---
+    tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
+    pygame.display.set_caption(f"Batalha Naval - Jogador {PLAYER_ID}")
     relogio = pygame.time.Clock()
 
     # --- Tabuleiro e barcos ---
@@ -101,21 +90,19 @@ def main():
 
         if tabuleiro.todos_destruidos():
             interface.adicionar_log(f"[DERROTA] Jogador {PLAYER_ID} foi derrotado!")
-            if not HEADLESS:
-                tela.fill(COR_FUNDO)
-                tabuleiro.desenhar(tela)
-                interface.desenhar_log(tela)
-                interface.desenhar_hud(tela)
-                pygame.display.flip()
-            pygame.time.wait(3000)
-            rodando = False
-
-        if not HEADLESS:
             tela.fill(COR_FUNDO)
             tabuleiro.desenhar(tela)
             interface.desenhar_log(tela)
             interface.desenhar_hud(tela)
             pygame.display.flip()
+            pygame.time.wait(3000)
+            rodando = False
+
+        tela.fill(COR_FUNDO)
+        tabuleiro.desenhar(tela)
+        interface.desenhar_log(tela)
+        interface.desenhar_hud(tela)
+        pygame.display.flip()
 
         clock.tick(60)
 
