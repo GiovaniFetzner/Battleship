@@ -32,24 +32,40 @@ class Tabuleiro:
             colocado = False
             tentativas = 0
 
-            while not colocado and tentativas < 200:
+            while not colocado and tentativas < 500:
                 horizontal = random.choice([True, False])
+                barco_temp = tipo_barco(0, 0, horizontal)
+                tamanho = barco_temp.tamanho
 
                 if horizontal:
-                    x = random.randint(0, self.colunas - tipo_barco().tamanho)
+                    x = random.randint(0, self.colunas - tamanho)
                     y = random.randint(0, self.linhas - 1)
                 else:
                     x = random.randint(0, self.colunas - 1)
-                    y = random.randint(0, self.linhas - tipo_barco().tamanho)
+                    y = random.randint(0, self.linhas - tamanho)
 
                 barco = tipo_barco(x, y, horizontal)
-                if self.adicionar_barco(barco):
+
+                # Garante que TODAS as posições estão dentro da grade
+                posicoes_validas = all(
+                    0 <= px < self.colunas and 0 <= py < self.linhas
+                    for px, py in barco.get_posicoes()
+                )
+
+                if posicoes_validas and self.posicao_valida(barco):
+                    self.barcos.append(barco)
                     colocado = True
                 else:
                     tentativas += 1
+            
+            if colocado:
+                print(f"[OK] {barco.nome} posicionado em {barco.get_posicoes()} {'H' if horizontal else 'V'}")
+            else:
+                print(f"[ERRO] Não foi possível posicionar {tipo_barco.__name__} após {tentativas} tentativas")
 
             if not colocado:
-                print(f" Não foi possível posicionar '{tipo_barco().nome}' após {tentativas} tentativas.")
+                print(f"[!] Falha ao posicionar '{tipo_barco().nome}' após {tentativas} tentativas.")
+
 
     # --- LÓGICA DE ATAQUE ---
     def receber_tiro(self, x, y):
@@ -84,6 +100,14 @@ class Tabuleiro:
         self._desenhar_grid(tela)
         self._desenhar_barcos(tela)
         self._desenhar_tiros(tela)
+
+        # Teste de borda: usa (0,0) como origem
+        pygame.draw.rect(
+            tela,
+            (255, 255, 255),
+            (0, 0, TAMANHO_CELULA * self.colunas, TAMANHO_CELULA * self.linhas),
+            2,
+        )
 
     def _desenhar_grid(self, tela):
         for i in range(self.linhas + 1):

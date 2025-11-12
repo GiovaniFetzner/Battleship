@@ -15,7 +15,7 @@ def main():
 
     # --- Tabuleiro ---
     tabuleiro = Tabuleiro()
-    tipos_barcos = [PortaAvioes, Bombardeiro, Submarino, Lancha, Lancha]
+    tipos_barcos = [PortaAvioes, Bombardeiro, Submarino, Lancha]
     tabuleiro.posicionar_barcos_automaticamente(tipos_barcos)
 
     # --- Interface (HUD + log) ---
@@ -62,6 +62,12 @@ def main():
                 jogadores[0]["acertos"] += 1
             interface.atualizar_jogadores(jogadores)
             tempo_tiro = 0
+        
+        if tabuleiro.todos_destruidos():
+            interface.adicionar_log("lost")
+            pygame.display.flip()
+            pygame.time.wait(3000)  # espera 3 segundos antes de fechar
+            rodando = False
 
         # --- Desenho ---
         tela.fill(COR_FUNDO)

@@ -5,14 +5,18 @@ pygame.init()
 # -----------------------------
 # Configurações principais
 # -----------------------------
-TAMANHO_CELULA = 50
+TAMANHO_CELULA = 40  # era 50 → reduz para caber
 LINHAS = 10
 COLUNAS = 10
 LARGURA_GRID = COLUNAS * TAMANHO_CELULA
 ALTURA_GRID = LINHAS * TAMANHO_CELULA
+
 LARGURA_SIDEBAR = 450
 LARGURA_TELA = LARGURA_GRID + LARGURA_SIDEBAR
-ALTURA_TELA = ALTURA_GRID
+
+# Diminui a área do tabuleiro, mas mantém o log visível
+ALTURA_TELA = ALTURA_GRID + 150  # 150px extras pro log
+
 
 # -----------------------------
 # Cores
