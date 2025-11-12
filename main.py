@@ -77,6 +77,18 @@ while rodando:
             pos_mouse = pygame.mouse.get_pos()
             if interface.mouse_sobre_log(pos_mouse):
                 interface.mover_scroll(-evento.y)
+        elif evento.type == pygame.KEYDOWN:
+            # Ctrl+C para copiar o log completo
+            try:
+                if evento.key == pygame.K_c and (evento.mod & pygame.KMOD_CTRL):
+                    sucesso = interface.copiar_log(apenas_visivel=False)
+                    if sucesso:
+                        interface.adicionar_log("[INFO] Log copiado para a área de transferência (Ctrl+C)")
+                    else:
+                        interface.adicionar_log("[ERRO] Não foi possível copiar o log para a área de transferência")
+            except Exception as e:
+                # garantir que erros não quebrem o loop
+                interface.adicionar_log(f"[ERRO] ao tentar copiar: {e}")
 
     adversarios = [h for h in HOSTS if h["ip"] != LOCAL_IP]
 
