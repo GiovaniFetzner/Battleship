@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  player1:
+    build: .
+    container_name: jogador1
+    environment:
+      - MODO_EXEC=docker
+    networks:
+      - batalha_net
+
+  player2:
+    build: .
+    container_name: jogador2
+    environment:
+      - MODO_EXEC=docker
+    networks:
+      - batalha_net
+
+  player3:
+    build: .
+    container_name: jogador3
+    environment:
+      - MODO_EXEC=docker
+    networks:
+      - batalha_net
+
+networks:
+  batalha_net:
+    driver: bridge
