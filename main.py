@@ -62,10 +62,17 @@ def main():
                 jogadores[0]["acertos"] += 1
             interface.atualizar_jogadores(jogadores)
             tempo_tiro = 0
-        
+                    
         if tabuleiro.todos_destruidos():
             interface.adicionar_log("lost")
+
+            # redesenha tudo uma última vez antes de pausar
+            tela.fill(COR_FUNDO)
+            tabuleiro.desenhar(tela)
+            interface.desenhar_log(tela)
+            interface.desenhar_hud(tela)
             pygame.display.flip()
+
             pygame.time.wait(3000)  # espera 3 segundos antes de fechar
             rodando = False
 
