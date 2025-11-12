@@ -50,10 +50,17 @@ class Interface:
 
     # --- LOG ---
     def adicionar_log(self, mensagem):
-        """Adiciona uma nova mensagem ao log."""
+        """Adiciona uma nova mensagem ao log e acompanha automaticamente o final."""
         self.log_mensagens.append(mensagem)
         if len(self.log_mensagens) > self.max_log_lines:
             self.log_mensagens.pop(0)
+
+        # Se o log estiver no fim, acompanhar automaticamente a nova mensagem
+        linhas_visiveis = 7
+        max_offset = max(0, len(self.log_mensagens) - linhas_visiveis)
+        if self.scroll_offset >= max_offset - 1:  # estava no fim
+            self.scroll_offset = max_offset
+
 
     def mover_scroll(self, direcao):
         """Move o scroll do log (1 = para baixo, -1 = para cima)."""
