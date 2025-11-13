@@ -129,7 +129,6 @@ def tratar_resposta_tcp(msg):
                         hits_by_player[opp] += 1
 
         elif resultado.lower() == "destroyed":
-            interface.adicionar_log(f"[REDE] Último navio destruído!")
             pos = (x, y)
             if pos in meus_tiros_enviados:
                 entry = meus_tiros_enviados[pos]
@@ -142,6 +141,7 @@ def tratar_resposta_tcp(msg):
                     hits_by_player[opp] += 1
     except Exception as e:
         print("[ERRO CALLBACK TCP]", e, msg)
+
 
 jugador_rede.start_network(on_tiro=tratar_mensagem, on_res_tcp=tratar_resposta_tcp)
 
