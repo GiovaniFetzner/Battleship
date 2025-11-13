@@ -2,58 +2,51 @@ import socket
 import threading
 import time
 import ast
+import sys
 
-# --- Configurações de portas e mensagens ---
+# --- Configurações ---
 UDP_PORT = 5000
 TCP_PORT = 5001
 BROADCAST_MSG = "Conectando"
-BROADCAST_INTERVAL = 1  # segundos entre broadcasts
-DISCOVERY_TIMEOUT = 3   # segundos para aguardar respostas
+BROADCAST_INTERVAL = 1
+DISCOVERY_TIMEOUT = 3
+
+# --- Modo simulação ---
+# Rode o script duas vezes, passando "1" ou "2" como argumento:
+#   python main.py 1
+#   python main.py 2
+SIMULATION_MODE = True
+INSTANCE_ID = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+FAKE_IPS = ["127.0.0.1", "127.0.0.2"]
+LOCAL_IP = FAKE_IPS[INSTANCE_ID - 1]
+LOCAL_SUBNET = "127.0.0"  # todos 127.x.x.x pertencem à mesma "rede"
 
 # --- Variáveis globais ---
-HOSTS = []       # Lista de participantes: {"ip": ..., "porta": ...}
-PLAYER_ID = None  # Será definido automaticamente
+HOSTS = []
+PLAYER_ID = None
 
-# --- Descobre IP local da máquina ---
-def get_local_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # Conecta a um IP qualquer da internet sem enviar dados
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = "127.0.0.1"
-    finally:
-        s.close()
-    return ip
-
-LOCAL_IP = get_local_ip()
-LOCAL_SUBNET = '.'.join(LOCAL_IP.split('.')[:3])  # filtra apenas a mesma sub-rede
-
-# --- Thread para ouvir broadcasts UDP ---
+# --- Thread UDP ---
 def listen_udp():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(('', UDP_PORT))
+    sock.bind((LOCAL_IP, UDP_PORT))
     while True:
         try:
             data, addr = sock.recvfrom(1024)
             msg = data.decode().strip()
             ip = addr[0]
             if msg == BROADCAST_MSG and ip != LOCAL_IP:
-                # Filtra apenas IPs da mesma sub-rede
                 if ip.startswith(LOCAL_SUBNET) and not any(h["ip"] == ip for h in HOSTS):
                     HOSTS.append({"ip": ip, "porta": UDP_PORT})
-                # Responde via TCP com a lista de participantes
                 threading.Thread(target=respond_tcp, args=(ip,), daemon=True).start()
         except Exception as e:
-            print("[ERRO UDP]", e)
+            print(f"[ERRO UDP {LOCAL_IP}]", e)
 
-# --- Thread para ouvir conexões TCP ---
+# --- Thread TCP ---
 def listen_tcp():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(('', TCP_PORT))
+    sock.bind((LOCAL_IP, TCP_PORT))
     sock.listen()
     while True:
         try:
@@ -67,17 +60,21 @@ def listen_tcp():
                             HOSTS.append({"ip": ip, "porta": UDP_PORT})
             conn.close()
         except Exception as e:
-            print("[ERRO TCP]", e)
+            print(f"[ERRO TCP {LOCAL_IP}]", e)
 
-# --- Envia broadcast UDP ---
+# --- Broadcast UDP ---
 def broadcast_udp():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     while True:
         sock.sendto(BROADCAST_MSG.encode(), ('<broadcast>', UDP_PORT))
+        # também envia direto pro outro IP da simulação
+        for ip in FAKE_IPS:
+            if ip != LOCAL_IP:
+                sock.sendto(BROADCAST_MSG.encode(), (ip, UDP_PORT))
         time.sleep(BROADCAST_INTERVAL)
 
-# --- Responde via TCP com lista de participantes ---
+# --- Responde via TCP ---
 def respond_tcp(target_ip):
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -87,25 +84,19 @@ def respond_tcp(target_ip):
         sock.sendall(msg.encode())
         sock.close()
     except Exception:
-        pass  # conexão falhou, ignora
+        pass
 
-# --- Inicialização da rede ---
+# --- Inicialização ---
 def init_network():
-    # Adiciona self na lista de HOSTS
     HOSTS.append({"ip": LOCAL_IP, "porta": UDP_PORT})
-
-    # Inicia threads de escuta UDP e TCP
     threading.Thread(target=listen_udp, daemon=True).start()
     threading.Thread(target=listen_tcp, daemon=True).start()
 
-    # Envia broadcast por alguns segundos
     end_time = time.time() + DISCOVERY_TIMEOUT
-    broadcast_thread = threading.Thread(target=broadcast_udp, daemon=True)
-    broadcast_thread.start()
+    threading.Thread(target=broadcast_udp, daemon=True).start()
     while time.time() < end_time:
         time.sleep(0.1)
 
-    # Ordena HOSTS e define PLAYER_ID
     HOSTS.sort(key=lambda h: h["ip"])
     global PLAYER_ID
     for i, h in enumerate(HOSTS, start=1):
@@ -113,9 +104,10 @@ def init_network():
             PLAYER_ID = i
             break
 
-# --- Executa inicialização ---
+# --- Execução ---
 init_network()
 
+print(f"[INFO] Instância {INSTANCE_ID}")
 print(f"[INFO] IP local: {LOCAL_IP}")
 print(f"[INFO] PLAYER_ID: {PLAYER_ID}")
 print(f"[INFO] HOSTS detectados:")
