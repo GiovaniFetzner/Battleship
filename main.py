@@ -104,7 +104,7 @@ def tratar_mensagem(msg):
         active_opponents[leaving_id] = False
         interface.adicionar_log(f"[NET] Jogador {leaving_id} saiu — não enviaremos mais mensagens para ele")
 
-    elif msg.strip().upper().startswith("LOST"):
+    elif cmd.startswith("LOST"):
         interface.adicionar_log(f"[NET] Adversário declarou DERROTA - você venceu!")
         active_opponents[OPPONENT_ID] = False
 
@@ -112,24 +112,34 @@ def tratar_resposta_tcp(msg):
     global meus_tiros_enviados, hits_by_player
     try:
         parts = msg.split(':')[1].split(',')
-        resultado, x, y, autor = parts[0].lower(), int(parts[1]), int(parts[2]), int(parts[3])
-        if resultado == "destroyed":
-            resultado_texto = "último navio destruído!"
-        else:
-            resultado_texto = resultado
+        resultado, x, y, autor = parts[0], int(parts[1]), int(parts[2]), int(parts[3])
+        interface.adicionar_log(f"[TCP-RECEBIDO] {resultado.upper()} em ({x},{y}) de J{autor}")
 
-        interface.adicionar_log(f"[TCP-RECEBIDO] {resultado_texto.upper()} em ({x},{y}) de J{autor}")
+        if resultado.lower() == "hit":
+            pos = (x, y)
+            if pos in meus_tiros_enviados:
+                entry = meus_tiros_enviados[pos]
+                if entry.get("status") == "pendente":
+                    jogadores[0]["acertos"] += 1
+                    interface.atualizar_jogadores(jogadores)
+                    entry["status"] = "acertou"
+                    opp = entry.get("opponent")
+                    if opp is not None:
+                        hits_by_player.setdefault(opp, 0)
+                        hits_by_player[opp] += 1
 
-        pos = (x, y)
-        if pos in meus_tiros_enviados:
-            entry = meus_tiros_enviados[pos]
-            if entry.get("status") == "pendente":
+        elif resultado.lower() == "destroyed":
+            interface.adicionar_log(f"[REDE] Último navio destruído!")
+            pos = (x, y)
+            if pos in meus_tiros_enviados:
+                entry = meus_tiros_enviados[pos]
+                entry["status"] = "acertou"
                 jogadores[0]["acertos"] += 1
                 interface.atualizar_jogadores(jogadores)
-                entry["status"] = "acertou"
-                opp = entry.get("opponent", autor)
-                hits_by_player.setdefault(opp, 0)
-                hits_by_player[opp] += 1
+                opp = entry.get("opponent")
+                if opp is not None:
+                    hits_by_player.setdefault(opp, 0)
+                    hits_by_player[opp] += 1
     except Exception as e:
         print("[ERRO CALLBACK TCP]", e, msg)
 
@@ -154,14 +164,12 @@ while rodando:
             if evento_rede["tipo"] == "tiro":
                 x, y, autor = evento_rede["x"], evento_rede["y"], evento_rede["autor"]
                 resultado = tabuleiro.receber_tiro(x, y)
-                if tabuleiro.todos_destruidos() and resultado != "destroyed":
-                    resultado = "destroyed"
                 interface.adicionar_log(f"[REDE] Tiro de J{autor} em ({x},{y}) -> {resultado}")
                 if resultado in ("hit", "destroyed"):
                     jogadores[1]["acertos"] += 1
                     interface.atualizar_jogadores(jogadores)
                     vezes_atingido += 1
-                    threading.Thread(target=enviar_resposta_tcp, args=(autor, resultado, x, y, PLAYER_ID), daemon=True).start()
+                threading.Thread(target=enviar_resposta_tcp, args=(autor, resultado, x, y, PLAYER_ID), daemon=True).start()
             fila_rede.task_done()
     except queue.Empty:
         pass
@@ -170,7 +178,6 @@ while rodando:
     for evento in pygame.event.get():
         if evento.type == pygame.QUIT:
             rodando = False
-
         elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
             if botao_sair_rect.collidepoint(evento.pos):
                 interface.adicionar_log("[BOTÃO] Saindo do jogo...")
@@ -213,15 +220,14 @@ while rodando:
         interface.adicionar_log(f"[DERROTA] Jogador {PLAYER_ID} foi derrotado!")
         try:
             enviar_derrota()
-            interface.adicionar_log(f"[UDP ENVIO DERROTA] LOST,{PLAYER_ID}")
+            interface.adicionar_log("[UDP ENVIO DERROTA] LOST enviado")
+            enviar_saida()
+            interface.adicionar_log("[UDP ENVIO SAIDA] SAINDO enviado")
         except Exception:
             pass
         active_opponents = {k: False for k in active_opponents}
-        try:
-            enviar_saida()
-        except Exception:
-            pass
-        pygame.time.wait(3000)
+        # Delay para garantir que o outro jogador receba a mensagem
+        pygame.time.wait(2000)
         rodando = False
 
     # --- VITÓRIA ---
@@ -230,9 +236,11 @@ while rodando:
         interface.adicionar_log(f"[VITÓRIA] Jogador {PLAYER_ID} venceu!")
         try:
             enviar_saida()
+            interface.adicionar_log("[UDP ENVIO SAIDA] SAINDO enviado")
         except Exception:
             pass
-        pygame.time.wait(3000)
+        # Delay para garantir que o outro jogador processe a derrota
+        pygame.time.wait(2000)
         rodando = False
 
 pygame.quit()
