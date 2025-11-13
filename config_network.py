@@ -128,6 +128,21 @@ def enviar_resposta_tcp(dest_id, resultado, x, y, autor):
     except Exception as e:
         print(f"[ERRO ENVIO TCP] {e}")
 
+
+def enviar_saida():
+    """Envía uma mensagem UDP informando que este jogador está saindo.
+
+    Mensagem enviada: 'SAINDO,<PLAYER_ID>'
+    """
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        msg = f"SAINDO,{PLAYER_ID}"
+        sock.sendto(msg.encode(), (OPPONENT_UDP_IP, OPPONENT_GAME_PORT))
+        sock.close()
+        print(f"[UDP ENVIO] {msg} -> {OPPONENT_UDP_IP}:{OPPONENT_GAME_PORT}")
+    except Exception as e:
+        print(f"[ERRO ENVIO UDP - SAIDA] {e}")
+
 def init_network():
     threading.Thread(target=listen_tcp, daemon=True).start()
     time.sleep(0.5)

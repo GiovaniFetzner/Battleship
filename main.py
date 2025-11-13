@@ -12,7 +12,7 @@ from front.barcos.bombardeiro import Bombardeiro
 from front.barcos.porta_avioes import PortaAvioes
 from config_network import (
     HOSTS, PLAYER_ID, OPPONENT_IP, IS_DOCKER,
-    enviar_tiro_para_todos, enviar_resposta_tcp, Jogador
+    enviar_tiro_para_todos, enviar_resposta_tcp, Jogador, enviar_saida
 )
 
 # --- Inicialização do Pygame ---
@@ -29,10 +29,10 @@ tabuleiro.posicionar_barcos_automaticamente(tipos_barcos)
 # --- DEBUG: log das posições locais dos barcos ---
 # Isso ajuda a diagnosticar discrepâncias entre Host e Container
 try:
-    interface.adicionar_log("[DEBUG] Posicionamento local dos barcos:")
+    print("[DEBUG] Posicionamento local dos barcos:")
     for b in tabuleiro.barcos:
         s = f"  {b.nome}: {b.get_posicoes()}"
-        interface.adicionar_log(s)
+        print(s)
 except Exception:
     # Em casos headless ou durante testes, garantir que falhas de log
     # não quebrem o fluxo do jogo
@@ -57,8 +57,13 @@ jugador_rede = Jogador()
 
 
 def tratar_mensagem(msg):
+    # Tratar mensagens UDP variadas: TIRO,x,y,autor  ou  SAINDO,<id>  ou 'saindo'
     parts = msg.split(',')
-    if len(parts) >= 4:
+    if not parts:
+        return
+
+    cmd = parts[0].strip().upper()
+    if cmd == "TIRO" and len(parts) >= 4:
         try:
             x = int(parts[1])
             y = int(parts[2])
@@ -66,6 +71,18 @@ def tratar_mensagem(msg):
             fila_rede.put({"tipo": "tiro", "x": x, "y": y, "autor": autor})
         except ValueError:
             print("[REDE] Mensagem TIRO inválida:", msg)
+    elif cmd == "SAINDO":
+        # Mensagem de saída: SAINDO,<player_id>
+        try:
+            leaving_id = int(parts[1]) if len(parts) >= 2 else OPPONENT_ID
+            active_opponents[leaving_id] = False
+            interface.adicionar_log(f"[NET] Jogador {leaving_id} saiu — não enviaremos mais mensagens para ele")
+        except Exception:
+            print("[REDE] Mensagem SAINDO inválida:", msg)
+    elif msg.strip().lower() == "saindo":
+        # caso simples sem id
+        active_opponents[OPPONENT_ID] = False
+        interface.adicionar_log(f"[NET] Jogador {OPPONENT_ID} saiu (mensagem 'saindo')")
 
 
 def tratar_resposta_tcp(msg):
@@ -75,23 +92,30 @@ def tratar_resposta_tcp(msg):
     Quando você recebe uma resposta TCP confirmando que seu tiro acertou,
     incrementamos o contador de acertos do Jogador (você).
     """
-    global meus_tiros_enviados
-    
+    global meus_tiros_enviados, hits_by_player
+
     try:
         parts = msg.split(':')[1].split(',')
         resultado, x, y, autor = parts[0], int(parts[1]), int(parts[2]), int(parts[3])
         interface.adicionar_log(f"[TCP-RECEBIDO] {resultado.upper()} em ({x},{y}) de J{autor}")
-        
-        # Se foi um acerto (hit ou destroyed), incrementar SEUS acertos
+
+        # Se foi um acerto (hit ou destroyed), verificar se é resposta ao nosso tiro
         if resultado.lower() in ("hit", "destroyed"):
-            # Verificar se este é realmente um tiro que você enviou
             pos = (x, y)
             if pos in meus_tiros_enviados:
-                # Só incrementar UMA VEZ (caso receba resposta duplicada)
-                if meus_tiros_enviados[pos] == "pendente":
-                    jogadores[0]["acertos"] += 1  # Você marcou um acerto!
-                    meus_tiros_enviados[pos] = "acertou"
+                entry = meus_tiros_enviados[pos]
+                # entry is a dict: {"opponent": id, "status": "pendente"/"acertou"}
+                if entry.get("status") == "pendente":
+                    # Atualiza HUD/contagem de acertos do jogador local
+                    jogadores[0]["acertos"] += 1
                     interface.atualizar_jogadores(jogadores)
+
+                    # Marca como acertado e atualiza estatísticas por jogador
+                    entry["status"] = "acertou"
+                    opp = entry.get("opponent")
+                    if opp is not None:
+                        hits_by_player.setdefault(opp, 0)
+                        hits_by_player[opp] += 1
     except Exception as e:
         print("[ERRO CALLBACK TCP]", e, msg)
 
@@ -112,7 +136,16 @@ def enviar_tiro(x, y):
 
 # --- Rastreamento de tiros para contagem correta ---
 # Cada posição (x,y) que você atira é armazenada para verificar depois na resposta TCP
-meus_tiros_enviados = {}  # {(x, y): "pendente"} ou {(x, y): "acertou"}
+meus_tiros_enviados = {}  # {(x,y): {"opponent": id, "status": "pendente"}}
+
+# Ativos: controla para quais jogadores ainda podemos enviar mensagens
+# Por padrão, o adversário padrão está ativo
+OPPONENT_ID = 2 if PLAYER_ID == 1 else 1
+active_opponents = {OPPONENT_ID: True}
+
+# Estatísticas
+vezes_atingido = 0
+hits_by_player = {}  # {player_id: count}
 
 # --- Lista de posições aleatórias ---
 posicoes_disponiveis = [(x, y) for x in range(tabuleiro.colunas) for y in range(tabuleiro.linhas)]
@@ -141,8 +174,11 @@ while rodando:
                 interface.adicionar_log(f"[REDE] Tiro de J{autor} em ({x},{y}) -> {resultado}")
 
                 if resultado in ("hit", "destroyed"):
-                    jogadores[1]["acertos"] += 1  # Adversário marcou um acerto
+                    # Adversário marcou um acerto
+                    jogadores[1]["acertos"] += 1
                     interface.atualizar_jogadores(jogadores)
+                    # Estatística: quantas vezes fui atingido
+                    vezes_atingido += 1
                     # Enviar resposta em thread separada para não bloquear o Pygame
                     threading.Thread(
                         target=enviar_resposta_tcp,
@@ -165,7 +201,7 @@ while rodando:
         x, y = posicoes_disponiveis.pop()
         enviar_tiro(x, y)
         # Registrar este tiro no rastreamento (pendente de resposta)
-        meus_tiros_enviados[(x, y)] = "pendente"
+        meus_tiros_enviados[(x, y)] = {"opponent": OPPONENT_ID, "status": "pendente"}
         tempo_tiro = 0
         eventos_de_jogo = True
 
@@ -190,4 +226,30 @@ while rodando:
         pygame.time.wait(3000)
         rodando = False
 
+    # Saída manual via janela: se o usuário fechar, enviar mensagem SAINDO
+    # (também tratamos a finalização depois do loop)
+
 pygame.quit()
+# Ao encerrar, enviar mensagem SAINDO para o adversário e imprimir score final
+try:
+    enviar_saida()
+except Exception:
+    pass
+
+# Calcular score final: número de jogadores atingidos (único) - vezes_atingido
+# Em um jogo com apenas um adversário, 'jogadores atingidos' será 1 se houver
+# ao menos um hit naquele adversário.
+unique_opponents_hit = len([p for p, cnt in hits_by_player.items() if cnt > 0])
+score_final = unique_opponents_hit - (vezes_atingido or 0)
+
+print("\n===== SCORE FINAL =====")
+print(f"Você foi atingido {vezes_atingido} vezes")
+for p, cnt in hits_by_player.items():
+    print(f"Você atingiu o jogador {p} {cnt} vezes")
+print(f"Score final (players_hit - times_hit): {unique_opponents_hit} - {vezes_atingido} = {score_final}")
+
+# Estatísticas overall
+total_hits_acertados = sum(hits_by_player.values()) if hits_by_player else 0
+print("\n===== ESTATÍSTICAS GERAIS =====")
+print(f"Total de vezes que você foi atingido: {vezes_atingido}")
+print(f"Total de tiros seus que acertaram (overall): {total_hits_acertados}")
