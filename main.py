@@ -54,7 +54,8 @@ hits_by_player = {}
 
 posicoes_disponiveis = [(x, y) for x in range(tabuleiro.colunas) for y in range(tabuleiro.linhas)]
 random.shuffle(posicoes_disponiveis)
-intervalo_tiro = 2000
+intervalo_tiro_base = 1800  # base em ms
+intervalo_tiro_random = 800  # variação aleatória de 0 a 800ms
 tempo_tiro = 0
 rodando = True
 necessita_redesenho = True
@@ -187,8 +188,9 @@ while rodando:
                     pass
                 rodando = False
 
-    # Tiros automáticos
+    # Tiros automáticos com intervalo randomizado
     tempo_tiro += clock.tick(60)
+    intervalo_tiro = intervalo_tiro_base + random.randint(0, intervalo_tiro_random)
     if tempo_tiro >= intervalo_tiro and posicoes_disponiveis and any(active_opponents.values()):
         x, y = posicoes_disponiveis.pop()
         enviar_tiro(x, y)
