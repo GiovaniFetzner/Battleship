@@ -3,6 +3,8 @@ import random
 import threading
 import queue
 import time
+import signal
+import sys
 
 from front.interface import Interface, LARGURA_TELA, ALTURA_TELA, COR_FUNDO
 from front.tabuleiro import Tabuleiro
@@ -54,6 +56,28 @@ fila_rede = queue.Queue()
 # ============================================================
 
 jugador_rede = Jogador()
+
+
+def handle_ctrl_c(signum, frame):
+    """Handler para Ctrl+C - envia SAINDO via UDP e encerra o jogo."""
+    global rodando
+    print("\n[CTRL+C] Encerrando jogo...")
+    interface.adicionar_log("[CTRL+C] Você pressionou Ctrl+C - encerrando")
+    
+    # Enviar mensagem SAINDO para os demais participantes
+    try:
+        enviar_saida()
+        print("[CTRL+C] Mensagem SAINDO enviada aos adversários")
+    except Exception as e:
+        print(f"[CTRL+C] Erro ao enviar SAINDO: {e}")
+    
+    # Parar o loop de jogo
+    rodando = False
+
+
+# Registrar o handler para SIGINT (Ctrl+C)
+signal.signal(signal.SIGINT, handle_ctrl_c)
+
 
 
 def tratar_mensagem(msg):
@@ -153,6 +177,13 @@ random.shuffle(posicoes_disponiveis)
 intervalo_tiro = 2000  # ms
 tempo_tiro = 0
 
+# Verificação inicial: não começar a atirar se estiver sem adversários
+print(f"[INICIO] Adversários ativos: {active_opponents}")
+tem_adversarios_ativos_inicial = any(active_opponents.values())
+if not tem_adversarios_ativos_inicial:
+    print("[AVISO] Nenhum adversário ativo! Aguardando adversários...")
+    interface.adicionar_log("[AVISO] Nenhum adversário ativo - aguardando conexão")
+
 # ============================================================
 # LOOP PRINCIPAL - Event-driven (redesenha apenas quando há eventos)
 # ============================================================
@@ -197,7 +228,9 @@ while rodando:
 
     # Envia tiros a cada intervalo de tempo
     tempo_tiro += clock.tick(60)  # Limita a 60 FPS para não usar 100% CPU
-    if tempo_tiro >= intervalo_tiro and posicoes_disponiveis:
+    # Verificar se há adversários ativos antes de enviar tiro
+    tem_adversarios_ativos = any(active_opponents.values())
+    if tempo_tiro >= intervalo_tiro and posicoes_disponiveis and tem_adversarios_ativos:
         x, y = posicoes_disponiveis.pop()
         enviar_tiro(x, y)
         # Registrar este tiro no rastreamento (pendente de resposta)
@@ -216,6 +249,11 @@ while rodando:
 
     if tabuleiro.todos_destruidos():
         interface.adicionar_log(f"[DERROTA] Jogador {PLAYER_ID} foi derrotado!")
+        # Enviar SAINDO antes de terminar
+        try:
+            enviar_saida()
+        except Exception:
+            pass
         pygame.time.wait(3000)
         rodando = False
     
@@ -223,6 +261,11 @@ while rodando:
     total_acertos_necessarios = 14  # PortaAvioes(5) + Bombardeiro(4) + Submarino(3) + Lancha(2)
     if jogadores[0]["acertos"] >= total_acertos_necessarios:
         interface.adicionar_log(f"[VITÓRIA] Jogador {PLAYER_ID} venceu!")
+        # Enviar SAINDO antes de terminar
+        try:
+            enviar_saida()
+        except Exception:
+            pass
         pygame.time.wait(3000)
         rodando = False
 
@@ -230,7 +273,7 @@ while rodando:
     # (também tratamos a finalização depois do loop)
 
 pygame.quit()
-# Ao encerrar, enviar mensagem SAINDO para o adversário e imprimir score final
+# Ao encerrar, enviar mensagem SAINDO para o adversário (caso não tenha sido enviado já)
 try:
     enviar_saida()
 except Exception:

@@ -133,13 +133,16 @@ def enviar_saida():
     """Envía uma mensagem UDP informando que este jogador está saindo.
 
     Mensagem enviada: 'SAINDO,<PLAYER_ID>'
+    Nota: usa OPPONENT_UDP_IP para garantir que chegue ao adversário
+    (importante para atravessar redes Docker/host)
     """
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         msg = f"SAINDO,{PLAYER_ID}"
+        # Use OPPONENT_UDP_IP (configurado corretamente para Docker/host)
         sock.sendto(msg.encode(), (OPPONENT_UDP_IP, OPPONENT_GAME_PORT))
         sock.close()
-        print(f"[UDP ENVIO] {msg} -> {OPPONENT_UDP_IP}:{OPPONENT_GAME_PORT}")
+        print(f"[UDP ENVIO SAIDA] {msg} -> {OPPONENT_UDP_IP}:{OPPONENT_GAME_PORT}")
     except Exception as e:
         print(f"[ERRO ENVIO UDP - SAIDA] {e}")
 
