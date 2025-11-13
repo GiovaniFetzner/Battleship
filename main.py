@@ -1,6 +1,5 @@
 import pygame
 import random
-import socket
 import threading
 import queue
 import time
@@ -11,7 +10,10 @@ from front.barcos.lancha import Lancha
 from front.barcos.submarino import Submarino
 from front.barcos.bombardeiro import Bombardeiro
 from front.barcos.porta_avioes import PortaAvioes
-from config_network import HOSTS, PLAYER_ID, UDP_PORT, LOCAL_IP
+from config_network import (
+    HOSTS, PLAYER_ID, OPPONENT_IP, IS_DOCKER,
+    enviar_tiro_para_todos, enviar_resposta_tcp, Jogador
+)
 
 # --- Inicialização do Pygame ---
 pygame.init()
@@ -24,163 +26,167 @@ tabuleiro = Tabuleiro()
 tipos_barcos = [PortaAvioes, Bombardeiro, Submarino, Lancha]
 tabuleiro.posicionar_barcos_automaticamente(tipos_barcos)
 
+# --- DEBUG: log das posições locais dos barcos ---
+# Isso ajuda a diagnosticar discrepâncias entre Host e Container
+try:
+    interface.adicionar_log("[DEBUG] Posicionamento local dos barcos:")
+    for b in tabuleiro.barcos:
+        s = f"  {b.nome}: {b.get_posicoes()}"
+        interface.adicionar_log(s)
+except Exception:
+    # Em casos headless ou durante testes, garantir que falhas de log
+    # não quebrem o fluxo do jogo
+    print("[DEBUG] Falha ao registrar posicoes dos barcos")
+
 # --- Interface ---
-# Criamos a lista de jogadores a partir do HOSTS inicial.
-# Como HOSTS pode mudar dinamicamente, a lista será expandida quando necessário.
-jogadores = [{"nome": f"Jogador {i+1}", "acertos": 0} for i in range(len(HOSTS))]
+jogadores = [
+    {"nome": f"Jogador {PLAYER_ID} (Você)", "acertos": 0},
+    {"nome": f"Adversário ({OPPONENT_IP})", "acertos": 0}
+]
 interface = Interface()
 interface.atualizar_jogadores(jogadores)
 
-# --- Fila para eventos vindos da rede (para serem consumidos no loop principal) ---
+# --- Fila de rede ---
 fila_rede = queue.Queue()
 
-# --- Configuração UDP ---
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-# Escuta em todas as interfaces para garantir que 127.0.0.1 <-> 127.0.0.2 funcione
-sock.bind(('', UDP_PORT))
-print(f"[NET] Jogador {PLAYER_ID} escutando na porta {UDP_PORT}")
+# ============================================================
+# REDE: usa a classe Jogador (centraliza lógica de rede)
+# ============================================================
 
-# --- Função para ouvir tiros de outros jogadores (thread) ---
-def ouvir_rede():
-    while True:
+jugador_rede = Jogador()
+
+
+def tratar_mensagem(msg):
+    parts = msg.split(',')
+    if len(parts) >= 4:
         try:
-            data, addr = sock.recvfrom(1024)
-            msg = data.decode().strip()
-            # aceitamos mensagens no formato: TIRO,x,y,autor
-            # também aceitamos shot,x,y,autor por compatibilidade
-            if msg.startswith("TIRO") or msg.startswith("shot") or msg.startswith("SHOT"):
-                parts = msg.split(',')
-                if len(parts) >= 4:
-                    tipo = parts[0].upper()
-                    try:
-                        x = int(parts[1])
-                        y = int(parts[2])
-                        autor = int(parts[3])
-                    except ValueError:
-                        print("[REDE] Mensagem TIRO inválida (valores):", msg)
-                        continue
+            x = int(parts[1])
+            y = int(parts[2])
+            autor = int(parts[3])
+            fila_rede.put({"tipo": "tiro", "x": x, "y": y, "autor": autor})
+        except ValueError:
+            print("[REDE] Mensagem TIRO inválida:", msg)
 
-                    # coloca evento na fila para o loop principal processar
-                    fila_rede.put({"tipo": "tiro", "x": x, "y": y, "autor": autor, "origem": addr[0]})
-                else:
-                    print("[REDE] Mensagem TIRO com formato incorreto:", msg)
-            else:
-                # outros tipos de mensagem podem ser tratados aqui (ex.: sincronização, participantes)
-                pass
-        except Exception as e:
-            print("[ERRO REDE]", e)
-            # pequena espera para evitar loop apertado em caso de erro contínuo
-            time.sleep(0.1)
 
-# inicia thread de escuta
-threading.Thread(target=ouvir_rede, daemon=True).start()
+def tratar_resposta_tcp(msg):
+    """Callback para mensagens RES:resultado,x,y,autor.
+    
+    IMPORTANTE: Aqui contamos SEUS acertos!
+    Quando você recebe uma resposta TCP confirmando que seu tiro acertou,
+    incrementamos o contador de acertos do Jogador (você).
+    """
+    global meus_tiros_enviados
+    
+    try:
+        parts = msg.split(':')[1].split(',')
+        resultado, x, y, autor = parts[0], int(parts[1]), int(parts[2]), int(parts[3])
+        interface.adicionar_log(f"[TCP-RECEBIDO] {resultado.upper()} em ({x},{y}) de J{autor}")
+        
+        # Se foi um acerto (hit ou destroyed), incrementar SEUS acertos
+        if resultado.lower() in ("hit", "destroyed"):
+            # Verificar se este é realmente um tiro que você enviou
+            pos = (x, y)
+            if pos in meus_tiros_enviados:
+                # Só incrementar UMA VEZ (caso receba resposta duplicada)
+                if meus_tiros_enviados[pos] == "pendente":
+                    jogadores[0]["acertos"] += 1  # Você marcou um acerto!
+                    meus_tiros_enviados[pos] = "acertou"
+                    interface.atualizar_jogadores(jogadores)
+    except Exception as e:
+        print("[ERRO CALLBACK TCP]", e, msg)
 
-# --- Função para disparar tiro ---
-def enviar_tiro(x, y, lista_adversarios):
-    # protocolo padronizado: TIRO,x,y,autor
+
+# inicia a rede (registra callbacks e thread de escuta)
+jugador_rede.start_network(on_tiro=tratar_mensagem, on_res_tcp=tratar_resposta_tcp)
+
+
+# ============================================================
+# FUNÇÕES DE JOGO
+# ============================================================
+
+def enviar_tiro(x, y):
     msg = f"TIRO,{x},{y},{PLAYER_ID}"
-    enviado = False
-    for h in lista_adversarios:
-        try:
-            sock.sendto(msg.encode(), (h["ip"], h["porta"]))
-            enviado = True
-        except Exception as e:
-            print(f"[ERRO ENVIO] não foi possível enviar para {h}: {e}")
-    if enviado:
-        interface.adicionar_log(f"[ENVIO] TIRO ({x},{y}) enviado por J{PLAYER_ID}")
-    else:
-        interface.adicionar_log(f"[ENVIO] Falha ao enviar TIRO ({x},{y}) por J{PLAYER_ID}")
+    enviar_tiro_para_todos(msg)
+    interface.adicionar_log(f"[ENVIO] TIRO ({x},{y}) enviado por J{PLAYER_ID}")
 
-# --- Lista de posições disponíveis (aleatória, sem repetir) ---
+
+# --- Rastreamento de tiros para contagem correta ---
+# Cada posição (x,y) que você atira é armazenada para verificar depois na resposta TCP
+meus_tiros_enviados = {}  # {(x, y): "pendente"} ou {(x, y): "acertou"}
+
+# --- Lista de posições aleatórias ---
 posicoes_disponiveis = [(x, y) for x in range(tabuleiro.colunas) for y in range(tabuleiro.linhas)]
 random.shuffle(posicoes_disponiveis)
-intervalo_tiro = 2000  # ms entre tiros automáticos
+intervalo_tiro = 2000  # ms
 tempo_tiro = 0
 
-# --- Loop principal ---
+# ============================================================
+# LOOP PRINCIPAL - Event-driven (redesenha apenas quando há eventos)
+# ============================================================
+
 rodando = True
+necessita_redesenho = True  # Redesenha na primeira iteração
+
 while rodando:
-    dt_ms = clock.tick(60)  # tempo em ms desde o último frame
-    # --- Consome eventos da fila de rede (FEITO NA THREAD PRINCIPAL) ---
+    # Processa eventos de rede
+    eventos_de_jogo = False
     try:
-        # esvazia todos os eventos disponíveis no momento
         while True:
             evento_rede = fila_rede.get_nowait()
+            eventos_de_jogo = True
             if evento_rede["tipo"] == "tiro":
-                x = evento_rede["x"]
-                y = evento_rede["y"]
-                autor = evento_rede["autor"]
+                x, y, autor = evento_rede["x"], evento_rede["y"], evento_rede["autor"]
 
-                # garante que a lista 'jogadores' tem tamanho suficiente
-                if autor - 1 >= len(jogadores):
-                    # expande jogadores até index existir
-                    for idx in range(len(jogadores), autor):
-                        jogadores.append({"nome": f"Jogador {idx+1}", "acertos": 0})
-
-                # aplica o tiro no tabuleiro local (quem recebeu foi atingido)
                 resultado = tabuleiro.receber_tiro(x, y)
                 interface.adicionar_log(f"[REDE] Tiro de J{autor} em ({x},{y}) -> {resultado}")
 
-                # se o tiro foi acerto, incrementa acerto do autor (se autor não for eu)
                 if resultado in ("hit", "destroyed"):
-                    # cuidado: autor pode ser eu (por eco). só conta se não for eu.
-                    if autor != PLAYER_ID:
-                        jogadores[autor - 1]["acertos"] += 1
+                    jogadores[1]["acertos"] += 1  # Adversário marcou um acerto
+                    interface.atualizar_jogadores(jogadores)
+                    # Enviar resposta em thread separada para não bloquear o Pygame
+                    threading.Thread(
+                        target=enviar_resposta_tcp,
+                        args=(autor, resultado, x, y, PLAYER_ID),
+                        daemon=True
+                    ).start()
 
-                # atualiza HUD
-                interface.atualizar_jogadores(jogadores)
             fila_rede.task_done()
     except queue.Empty:
         pass
 
-    # --- Events do pygame ---
+    # Processa eventos do Pygame
     for evento in pygame.event.get():
         if evento.type == pygame.QUIT:
             rodando = False
-        elif evento.type == pygame.MOUSEWHEEL:
-            pos_mouse = pygame.mouse.get_pos()
-            if interface.mouse_sobre_log(pos_mouse):
-                interface.mover_scroll(-evento.y)
-        elif evento.type == pygame.KEYDOWN:
-            # Ctrl+C para copiar o log completo
-            try:
-                if evento.key == pygame.K_c and (evento.mod & pygame.KMOD_CTRL):
-                    sucesso = interface.copiar_log(apenas_visivel=False)
-                    if sucesso:
-                        interface.adicionar_log("[INFO] Log copiado para a área de transferência (Ctrl+C)")
-                    else:
-                        interface.adicionar_log("[ERRO] Não foi possível copiar o log para a área de transferência")
-            except Exception as e:
-                interface.adicionar_log(f"[ERRO] ao tentar copiar: {e}")
 
-    # Recalcula adversários a cada frame (HOSTS pode ser dinâmico)
-    adversarios = [h for h in HOSTS if h["ip"] != LOCAL_IP]
-
-    # Se houver mais hosts do que a lista 'jogadores', expande a lista de jogadores
-    if len(HOSTS) > len(jogadores):
-        for idx in range(len(jogadores), len(HOSTS)):
-            jogadores.append({"nome": f"Jogador {idx+1}", "acertos": 0})
-        interface.atualizar_jogadores(jogadores)
-
-    # --- Tiros automáticos ---
-    tempo_tiro += dt_ms
-    if tempo_tiro >= intervalo_tiro and posicoes_disponiveis and adversarios:
+    # Envia tiros a cada intervalo de tempo
+    tempo_tiro += clock.tick(60)  # Limita a 60 FPS para não usar 100% CPU
+    if tempo_tiro >= intervalo_tiro and posicoes_disponiveis:
         x, y = posicoes_disponiveis.pop()
-        enviar_tiro(x, y, adversarios)
+        enviar_tiro(x, y)
+        # Registrar este tiro no rastreamento (pendente de resposta)
+        meus_tiros_enviados[(x, y)] = "pendente"
         tempo_tiro = 0
+        eventos_de_jogo = True
 
-    # --- Desenho ---
-    tela.fill(COR_FUNDO)
-    tabuleiro.desenhar(tela)
-    interface.desenhar_log(tela)
-    interface.desenhar_hud(tela)
-    pygame.display.flip()
+    # Redesenha apenas se houver eventos ou tiros
+    if eventos_de_jogo or necessita_redesenho:
+        tela.fill(COR_FUNDO)
+        tabuleiro.desenhar(tela)
+        interface.desenhar_log(tela)
+        interface.desenhar_hud(tela)
+        pygame.display.flip()
+        necessita_redesenho = False
 
-    # --- Verifica derrota ---
     if tabuleiro.todos_destruidos():
         interface.adicionar_log(f"[DERROTA] Jogador {PLAYER_ID} foi derrotado!")
+        pygame.time.wait(3000)
+        rodando = False
+    
+    # Verifica se você ganhou (acertou em todos os 14 pontos do adversário)
+    total_acertos_necessarios = 14  # PortaAvioes(5) + Bombardeiro(4) + Submarino(3) + Lancha(2)
+    if jogadores[0]["acertos"] >= total_acertos_necessarios:
+        interface.adicionar_log(f"[VITÓRIA] Jogador {PLAYER_ID} venceu!")
         pygame.time.wait(3000)
         rodando = False
 

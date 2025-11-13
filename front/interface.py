@@ -47,35 +47,12 @@ class Interface:
         self.max_log_lines = 50  # quantidade máxima de mensagens guardadas
         self.altura_log = 150    # altura da área do log
         self.area_log = pygame.Rect(0, ALTURA_TELA - self.altura_log, LARGURA_GRID, self.altura_log)
-        # Inicializa backend para copiar para área de transferência
-        self._clipboard_backend = None
-        try:
-            # preferir pygame.scrap quando disponível
-            import pygame.scrap as scrap
-            scrap.init()
-            # testa se funciona colocando vazio
-            try:
-                scrap.put(pygame.SCRAP_TEXT, b"")
-                self._clipboard_backend = 'scrap'
-                self._scrap = scrap
-            except Exception:
-                self._clipboard_backend = None
-        except Exception:
-            self._clipboard_backend = None
-
-        # fallback para tkinter se pygame.scrap não estiver disponível
-        if self._clipboard_backend is None:
-            try:
-                import tkinter as _tk
-                self._tk = _tk
-                self._clipboard_backend = 'tk'
-            except Exception:
-                self._clipboard_backend = None
 
     # --- LOG ---
     def adicionar_log(self, mensagem):
         """Adiciona uma nova mensagem ao log e acompanha automaticamente o final."""
         self.log_mensagens.append(mensagem)
+        print(mensagem)  # Imprime também no console para copiar com Ctrl+C
         if len(self.log_mensagens) > self.max_log_lines:
             self.log_mensagens.pop(0)
 
@@ -84,7 +61,6 @@ class Interface:
         max_offset = max(0, len(self.log_mensagens) - linhas_visiveis)
         if self.scroll_offset >= max_offset - 1:  # estava no fim
             self.scroll_offset = max_offset
-
 
     def mover_scroll(self, direcao):
         """Move o scroll do log (1 = para baixo, -1 = para cima)."""
@@ -141,50 +117,6 @@ class Interface:
                 ),
                 border_radius=4,
             )
-
-        # --- Copiar log ---
-        def copiar_log(self, apenas_visivel=False):
-            """Copia o log para a área de transferência.
-            Se apenas_visivel=True copia somente as linhas atualmente visíveis.
-            """
-            linhas_visiveis = 7
-            if apenas_visivel:
-                inicio = self.scroll_offset
-                fim = inicio + linhas_visiveis
-                msgs = self.log_mensagens[inicio:fim]
-            else:
-                msgs = self.log_mensagens
-
-            texto = "\n".join(msgs)
-
-            if not texto:
-                return False
-
-            # tenta usar pygame.scrap
-            if self._clipboard_backend == 'scrap':
-                try:
-                    # pygame.scrap espera bytes
-                    self._scrap.put(pygame.SCRAP_TEXT, texto.encode('utf-8'))
-                    return True
-                except Exception:
-                    pass
-
-            # fallback para tkinter
-            if self._clipboard_backend == 'tk':
-                try:
-                    root = self._tk.Tk()
-                    root.withdraw()
-                    root.clipboard_clear()
-                    root.clipboard_append(texto)
-                    # força atualização para garantir escrita
-                    root.update()
-                    root.destroy()
-                    return True
-                except Exception:
-                    pass
-
-            return False
-
 
     # --- HUD ---
     def atualizar_jogadores(self, lista_jogadores):

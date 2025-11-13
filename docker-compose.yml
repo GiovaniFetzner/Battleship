@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # Somente o Player 2 roda em Docker.
+  # O Player 1 roda localmente: python main.py 1
+  player2:
+    build: .
+    container_name: battleship_player2
+
+    environment:
+      # Identificador do jogador (o código usa isso pra definir portas e lógica)
+      PLAYER_ID: 2
+
+      # Exibe em modo "headless" (útil se pygame tentar abrir display)
+      DISPLAY: :99
+
+      # O host (Player 1) é acessível dentro do Docker via host.docker.internal
+      OPPONENT_IP: host.docker.internal
+      OPPONENT_TCP_IP: host.docker.internal
+      OPPONENT_UDP_IP: host.docker.internal
+
+      # Garante que o servidor UDP/TCP escute em todas as interfaces do container
+      BIND_IP: 0.0.0.0
+
+    networks:
+      battleship_net:
+        ipv4_address: 172.20.0.3 # IP fixo dentro da rede Docker (só pro container)
+
+    # Adiciona um alias DNS fixo pro host (Windows/Linux/Mac)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    ports:
+      # Porta UDP usada para TIROS (J1 -> J2)
+      - "5002:5002/udp"
+      # Porta UDP usada para TIROS (J2 -> J1)
+      - "5000:5000/udp"
+      # Porta TCP usada para respostas (RES:...)
+      - "5001:5001/tcp"
+
+    volumes:
+      # Monta o código local no container (sincronização automática)
+      - .:/app
+
+    stdin_open: true
+    tty: true
+
+    # Capacidades de rede extras para garantir conectividade
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+networks:
+  battleship_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

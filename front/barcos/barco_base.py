@@ -1,5 +1,4 @@
 import pygame
-import os
 from front.interface import TAMANHO_CELULA
 
 class Barco:
@@ -73,16 +72,18 @@ class Barco:
 # ----------------------------
 # FUNÇÃO AUXILIAR
 # ----------------------------
-HEADLESS = os.environ.get("HEADLESS", "false").lower() == "true"
+def carregar_imagem(nome_arquivo, tamanho_celulas, horizontal=True):
+    """Carrega e ajusta a imagem do barco conforme o tamanho e a orientação."""
+    imagem = pygame.image.load(f"assets/{nome_arquivo}").convert_alpha()
 
-def carregar_imagem(nome_arquivo, tamanho, horizontal=True):
-    if HEADLESS:
-        # cria uma superfície "vazia" para não falhar
-        surf = pygame.Surface((tamanho * 20, 20), pygame.SRCALPHA)
-        surf.fill((100, 100, 100, 255))
-        return surf
+    if horizontal:
+        largura = TAMANHO_CELULA * tamanho_celulas
+        altura = TAMANHO_CELULA
+        imagem = pygame.transform.scale(imagem, (largura, altura))
     else:
-        imagem = pygame.image.load(f"assets/{nome_arquivo}").convert_alpha()
-        if not horizontal:
-            imagem = pygame.transform.rotate(imagem, 90)
-        return imagem
+        largura = TAMANHO_CELULA
+        altura = TAMANHO_CELULA * tamanho_celulas
+        imagem = pygame.transform.scale(imagem, (altura, largura))
+        imagem = pygame.transform.rotate(imagem, 90)
+
+    return imagem
