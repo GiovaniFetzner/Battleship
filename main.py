@@ -43,7 +43,7 @@ interface.atualizar_jogadores(jogadores)
 
 # --- Fila de rede ---
 fila_rede = queue.Queue()
-jugador_rede = Jogador()
+jogador_rede = Jogador()
 
 # --- Estatísticas ---
 meus_tiros_enviados = {}
@@ -143,7 +143,7 @@ def tratar_resposta_tcp(msg):
         print("[ERRO CALLBACK TCP]", e, msg)
 
 
-jugador_rede.start_network(on_tiro=tratar_mensagem, on_res_tcp=tratar_resposta_tcp)
+jogador_rede.start_network(on_tiro=tratar_mensagem, on_res_tcp=tratar_resposta_tcp)
 
 def enviar_tiro(x, y):
     msg = f"TIRO,{x},{y},{PLAYER_ID}"
