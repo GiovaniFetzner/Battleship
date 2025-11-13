@@ -102,7 +102,7 @@ def tratar_mensagem(msg):
     elif cmd == "SAINDO":
         leaving_id = int(parts[1]) if len(parts) >= 2 else 0
         active_opponents[leaving_id] = False
-        interface.adicionar_log(f"[NET] Jogador {leaving_id} saiu — não enviaremos mais mensagens para ele")
+        interface.adicionar_log(f"[NET] Jogador {leaving_id} saiu — não enviará mais mensagens para ele")
 
     elif cmd.startswith("LOST"):
         interface.adicionar_log(f"[NET] Adversário declarou DERROTA - você venceu!")
@@ -178,14 +178,24 @@ while rodando:
     for evento in pygame.event.get():
         if evento.type == pygame.QUIT:
             rodando = False
-        elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
-            if botao_sair_rect.collidepoint(evento.pos):
-                interface.adicionar_log("[BOTÃO] Saindo do jogo...")
-                try:
-                    enviar_saida()
-                except Exception:
-                    pass
-                rodando = False
+        elif evento.type == pygame.MOUSEBUTTONDOWN:
+            # Scroll do log
+            if interface.mouse_sobre_log(evento.pos):
+                if evento.button == 4:  # scroll para cima
+                    interface.mover_scroll(-1)
+                elif evento.button == 5:  # scroll para baixo
+                    interface.mover_scroll(1)
+            # Clique no botão Sair
+            elif evento.button == 1:
+                if botao_sair_rect.collidepoint(evento.pos):
+                    interface.adicionar_log("[BOTÃO] Saindo do jogo...")
+                    try:
+                        enviar_saida()
+                    except Exception:
+                        pass
+                    rodando = False
+        elif evento.type == pygame.MOUSEMOTION:
+            interface.atualizar_hover(evento.pos)
 
     # Tiros automáticos
     tempo_tiro += clock.tick(60)
