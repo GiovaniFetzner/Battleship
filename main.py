@@ -150,12 +150,20 @@ while rodando:
             if evento_rede["tipo"] == "tiro":
                 x, y, autor = evento_rede["x"], evento_rede["y"], evento_rede["autor"]
                 resultado = tabuleiro.receber_tiro(x, y)
-                interface.adicionar_log(f"[REDE] Tiro de J{autor} em ({x},{y}) -> {resultado}")
+                # --- Atualiza log com hit/destroyed correto ---
+                if resultado == "hit":
+                    interface.adicionar_log(f"[REDE] Tiro de J{autor} em ({x},{y}) -> hit")
+                elif resultado == "destroyed":
+                    interface.adicionar_log(f"[REDE] Tiro de J{autor} em ({x},{y}) -> último navio destruído!")
                 if resultado in ("hit", "destroyed"):
                     jogadores[1]["acertos"] += 1
                     interface.atualizar_jogadores(jogadores)
                     vezes_atingido += 1
-                    threading.Thread(target=enviar_resposta_tcp, args=(autor, resultado, x, y, PLAYER_ID), daemon=True).start()
+                    threading.Thread(
+                        target=enviar_resposta_tcp,
+                        args=(autor, resultado, x, y, PLAYER_ID),
+                        daemon=True
+                    ).start()
             fila_rede.task_done()
     except queue.Empty:
         pass
@@ -164,7 +172,6 @@ while rodando:
     for evento in pygame.event.get():
         if evento.type == pygame.QUIT:
             rodando = False
-
         elif evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
             if botao_sair_rect.collidepoint(evento.pos):
                 interface.adicionar_log("[BOTÃO] Saindo do jogo...")
@@ -203,7 +210,7 @@ while rodando:
         necessita_redesenho = False
 
     # --- DERROTA ---
-    if tabuleiro.todos_destruidos():
+    if tabuleiro.todos_destruidos() or (not any(active_opponents.values()) and tabuleiro.barcos):
         interface.adicionar_log(f"[DERROTA] Jogador {PLAYER_ID} foi derrotado!")
         try:
             enviar_derrota()
