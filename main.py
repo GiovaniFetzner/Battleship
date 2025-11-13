@@ -165,11 +165,18 @@ while rodando:
                 x, y, autor = evento_rede["x"], evento_rede["y"], evento_rede["autor"]
                 resultado = tabuleiro.receber_tiro(x, y)
                 interface.adicionar_log(f"[REDE] Tiro de J{autor} em ({x},{y}) -> {resultado}")
+
                 if resultado in ("hit", "destroyed"):
                     jogadores[1]["acertos"] += 1
                     interface.atualizar_jogadores(jogadores)
                     vezes_atingido += 1
-                threading.Thread(target=enviar_resposta_tcp, args=(autor, resultado, x, y, PLAYER_ID), daemon=True).start()
+                    # Envia TCP apenas se for hit ou destroyed
+                    threading.Thread(
+                        target=enviar_resposta_tcp, 
+                        args=(autor, resultado, x, y, PLAYER_ID), 
+                        daemon=True
+                    ).start()
+
             fila_rede.task_done()
     except queue.Empty:
         pass
@@ -236,7 +243,6 @@ while rodando:
         except Exception:
             pass
         active_opponents = {k: False for k in active_opponents}
-        # Delay para garantir que o outro jogador receba a mensagem
         pygame.time.wait(2000)
         rodando = False
 
@@ -249,7 +255,6 @@ while rodando:
             interface.adicionar_log("[UDP ENVIO SAIDA] SAINDO enviado")
         except Exception:
             pass
-        # Delay para garantir que o outro jogador processe a derrota
         pygame.time.wait(2000)
         rodando = False
 
