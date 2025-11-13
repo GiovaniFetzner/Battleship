@@ -5,9 +5,8 @@ import sys
 import random
 import os
 
-# PLAYER_ID can come from command-line argument or from environment (used by Docker)
+# PLAYER_ID pode vir da env var (Docker) ou argumento de linha de comando
 try:
-    # prefer environment variable (docker-compose sets PLAYER_ID)
     env_pid = os.environ.get("PLAYER_ID")
     if env_pid is not None:
         PLAYER_ID = int(env_pid)
@@ -19,43 +18,31 @@ except (IndexError, ValueError, TypeError):
 # Detectar se está rodando em Docker
 IS_DOCKER = os.path.exists("/.dockerenv")
 
-# Portas diferentes por jogador para evitar eco/reflexão
-# Player 1 (host): escuta 5000, envia para 5002 (Player 2)
-# Player 2 (container): escuta 5002, envia para 5000 (Player 1)
+# Portas diferentes por jogador
 if PLAYER_ID == 1:
-    GAME_PORT = 5000  # Escuta aqui
-    OPPONENT_GAME_PORT = 5002  # Envia para Player 2 aqui
-else:  # PLAYER_ID == 2
-    GAME_PORT = 5002  # Escuta aqui
-    OPPONENT_GAME_PORT = 5000  # Envia para Player 1 aqui
+    GAME_PORT = 5000
+    OPPONENT_GAME_PORT = 5002
+else:
+    GAME_PORT = 5002
+    OPPONENT_GAME_PORT = 5000
 
-# TCP fixo (ambos escutam 5001)
 TCP_PORT = 5001
 
-# IP e porta do adversário
+# IPs de comunicação
 OPPONENT_ID = 2 if PLAYER_ID == 1 else 1
-OPPONENT_TCP_PORT = 5001  # Ambos escutam TCP na mesma porta
+OPPONENT_TCP_PORT = 5001
 
 if IS_DOCKER:
-    # No container, o adversário é o host — permita sobrescrever via env var
-    # (docker-compose pode passar OPPONENT_IP) e, por padrão, use host.docker.internal
     OPPONENT_IP = os.environ.get("OPPONENT_IP", "host.docker.internal")
-    # Para UDP (tiros), use gateway da rede Docker (172.20.0.1) que roteia para o host
     OPPONENT_UDP_IP = os.environ.get("OPPONENT_UDP_IP", "172.20.0.1")
-    # Para TCP, use host.docker.internal (resolve para 192.168.65.254 no Windows)
     OPPONENT_TCP_IP = os.environ.get("OPPONENT_TCP_IP", "host.docker.internal")
-    BIND_IP = "0.0.0.0"  # Escutar em todas as interfaces no Docker
+    BIND_IP = "0.0.0.0"
 else:
-    # Execução local (host). Permitir sobrescrita via env var também.
-    # IMPORTANTE: Use localhost:5001 pois o container mapeia para 0.0.0.0:5001
-    # O IP interno 172.20.0.3 não é acessível do host no Windows
     OPPONENT_IP = os.environ.get("OPPONENT_IP", "localhost")
     OPPONENT_UDP_IP = os.environ.get("OPPONENT_UDP_IP", "127.0.0.1")
     OPPONENT_TCP_IP = os.environ.get("OPPONENT_TCP_IP", "localhost")
-    BIND_IP = "127.0.0.1"  # Local escuta apenas em localhost
+    BIND_IP = "127.0.0.1"
 
-# Permitir sobrescrever BIND_IP via variável de ambiente (útil para desenvolvimento)
-# Ex.: no host $env:BIND_IP = '0.0.0.0' para que o processo escute em todas as interfaces
 BIND_IP = os.environ.get("BIND_IP", BIND_IP)
 
 HOSTS = [{"ip": OPPONENT_IP, "porta": OPPONENT_GAME_PORT, "nome": f"Jogador{2 if PLAYER_ID == 1 else 1}"}]
@@ -63,16 +50,17 @@ LOCK = threading.Lock()
 GAME_TCP_CALLBACK = None
 LOCAL_IP = BIND_IP
 
+
 def register_tcp_game_callback(cb):
     global GAME_TCP_CALLBACK
     GAME_TCP_CALLBACK = cb
     print(f"[NET] Callback TCP registrado para Jogador {PLAYER_ID}")
 
+
 def listen_tcp():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-    # Bind em 0.0.0.0 para escutar em TODAS as interfaces (inclusive a rede Docker)
     bind_address = "0.0.0.0" if IS_DOCKER else BIND_IP
     sock.bind((bind_address, TCP_PORT))
     sock.listen(5)
@@ -92,6 +80,7 @@ def listen_tcp():
         except Exception as e:
             print(f"[ERRO TCP] {e}")
 
+
 def ouvir_mensagens_de_jogo(callback):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -101,12 +90,12 @@ def ouvir_mensagens_de_jogo(callback):
         try:
             data, addr = sock.recvfrom(1024)
             msg = data.decode().strip()
-            if msg.startswith("TIRO"):
-                print(f"[UDP TIRO] Recebido de {addr}: {msg}")
-                callback(msg)
+            print(f"[UDP RECEBIDO] {msg} de {addr}")
+            callback(msg)
         except Exception as e:
             print(f"[ERRO UDP TIRO] {e}")
             time.sleep(0.1)
+
 
 def enviar_tiro_para_todos(msg):
     try:
@@ -116,6 +105,7 @@ def enviar_tiro_para_todos(msg):
         print(f"[UDP ENVIO] {msg} -> {OPPONENT_UDP_IP}:{OPPONENT_GAME_PORT}")
     except Exception as e:
         print(f"[ERRO ENVIO UDP] {e}")
+
 
 def enviar_resposta_tcp(dest_id, resultado, x, y, autor):
     try:
@@ -130,25 +120,33 @@ def enviar_resposta_tcp(dest_id, resultado, x, y, autor):
 
 
 def enviar_saida():
-    """Envía uma mensagem UDP informando que este jogador está saindo.
-
-    Mensagem enviada: 'SAINDO,<PLAYER_ID>'
-    Nota: usa OPPONENT_UDP_IP para garantir que chegue ao adversário
-    (importante para atravessar redes Docker/host)
-    """
+    """Envia mensagem UDP informando que este jogador saiu."""
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         msg = f"SAINDO,{PLAYER_ID}"
-        # Use OPPONENT_UDP_IP (configurado corretamente para Docker/host)
         sock.sendto(msg.encode(), (OPPONENT_UDP_IP, OPPONENT_GAME_PORT))
         sock.close()
         print(f"[UDP ENVIO SAIDA] {msg} -> {OPPONENT_UDP_IP}:{OPPONENT_GAME_PORT}")
     except Exception as e:
         print(f"[ERRO ENVIO UDP - SAIDA] {e}")
 
+
+def enviar_derrota():
+    """Envia mensagem UDP informando que este jogador perdeu o jogo."""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        msg = f"LOST,{PLAYER_ID}"
+        sock.sendto(msg.encode(), (OPPONENT_UDP_IP, OPPONENT_GAME_PORT))
+        sock.close()
+        print(f"[UDP ENVIO DERROTA] {msg} -> {OPPONENT_UDP_IP}:{OPPONENT_GAME_PORT}")
+    except Exception as e:
+        print(f"[ERRO ENVIO UDP - DERROTA] {e}")
+
+
 def init_network():
     threading.Thread(target=listen_tcp, daemon=True).start()
     time.sleep(0.5)
+
 
 print(f"\n[INFO] ===== JOGADOR {PLAYER_ID} =====")
 print(f"[INFO] Ambiente: {'DOCKER' if IS_DOCKER else 'LOCAL'}")
@@ -160,6 +158,7 @@ print(f"[INFO] Enviando respostas para: TCP {OPPONENT_IP}:5001")
 print(f"[INFO] ========================\n")
 
 init_network()
+
 
 class Jogador:
     def __init__(self):
