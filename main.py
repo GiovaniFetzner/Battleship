@@ -54,7 +54,8 @@ hits_by_player = {}
 
 posicoes_disponiveis = [(x, y) for x in range(tabuleiro.colunas) for y in range(tabuleiro.linhas)]
 random.shuffle(posicoes_disponiveis)
-intervalo_tiro = 2000
+intervalo_tiro_min = 1500
+intervalo_tiro_max = 3000
 tempo_tiro = 0
 rodando = True
 necessita_redesenho = True
@@ -84,7 +85,6 @@ signal.signal(signal.SIGINT, handle_ctrl_c)
 
 # --- Funções de rede ---
 def tratar_mensagem(msg):
-    global vezes_atingido
     parts = msg.split(',')
     if not parts:
         return
@@ -104,7 +104,7 @@ def tratar_mensagem(msg):
         active_opponents[leaving_id] = False
         interface.adicionar_log(f"[NET] Jogador {leaving_id} saiu — não enviará mais mensagens para ele")
 
-    elif cmd.startswith("LOST"):
+    elif msg.strip().upper().startswith("LOST"):
         interface.adicionar_log(f"[NET] Adversário declarou DERROTA - você venceu!")
         active_opponents[OPPONENT_ID] = False
 
@@ -115,7 +115,7 @@ def tratar_resposta_tcp(msg):
         resultado, x, y, autor = parts[0], int(parts[1]), int(parts[2]), int(parts[3])
         interface.adicionar_log(f"[TCP-RECEBIDO] {resultado.upper()} em ({x},{y}) de J{autor}")
 
-        if resultado.lower() == "hit":
+        if resultado.lower() in ("hit", "destroyed"):
             pos = (x, y)
             if pos in meus_tiros_enviados:
                 entry = meus_tiros_enviados[pos]
@@ -204,9 +204,9 @@ while rodando:
         elif evento.type == pygame.MOUSEMOTION:
             interface.atualizar_hover(evento.pos)
 
-    # Tiros automáticos
+    # Tiros automáticos (intervalo randomizado)
     tempo_tiro += clock.tick(60)
-    if tempo_tiro >= intervalo_tiro and posicoes_disponiveis and any(active_opponents.values()):
+    if tempo_tiro >= random.randint(intervalo_tiro_min, intervalo_tiro_max) and posicoes_disponiveis and any(active_opponents.values()):
         x, y = posicoes_disponiveis.pop()
         enviar_tiro(x, y)
         meus_tiros_enviados[(x, y)] = {"opponent": OPPONENT_ID, "status": "pendente"}
@@ -233,11 +233,22 @@ while rodando:
         necessita_redesenho = False
 
     # --- DERROTA ---
-    if tabuleiro.todos_destruidos():
+    if tabuleiro.todos_destruidos() and rodando:
         interface.adicionar_log(f"[DERROTA] Jogador {PLAYER_ID} foi derrotado!")
+
+        # Envia DERROTA repetidamente
+        for _ in range(3):
+            try:
+                enviar_derrota()
+                interface.adicionar_log("[UDP ENVIO DERROTA] LOST enviado")
+            except Exception:
+                pass
+            pygame.time.wait(500)
+
+        active_opponents = {k: False for k in active_opponents}
+
+        # Envia SAINDO
         try:
-            enviar_derrota()
-            interface.adicionar_log("[UDP ENVIO DERROTA] LOST enviado")
             enviar_saida()
             interface.adicionar_log("[UDP ENVIO SAIDA] SAINDO enviado")
         except Exception:
@@ -248,11 +259,11 @@ while rodando:
 
     # --- VITÓRIA ---
     total_acertos_necessarios = 14
-    if jogadores[0]["acertos"] >= total_acertos_necessarios:
+    if jogadores[0]["acertos"] >= total_acertos_necessarios and rodando:
         interface.adicionar_log(f"[VITÓRIA] Jogador {PLAYER_ID} venceu!")
+        # Envia SAINDO
         try:
             enviar_saida()
-            interface.adicionar_log("[UDP ENVIO SAIDA] SAINDO enviado")
         except Exception:
             pass
         pygame.time.wait(2000)
