@@ -54,8 +54,8 @@ hits_by_player = {}
 
 posicoes_disponiveis = [(x, y) for x in range(tabuleiro.colunas) for y in range(tabuleiro.linhas)]
 random.shuffle(posicoes_disponiveis)
-intervalo_tiro_base = 1800  # base em ms
-intervalo_tiro_random = 800  # variação aleatória de 0 a 800ms
+intervalo_tiro_min = 1500
+intervalo_tiro_max = 3000
 tempo_tiro = 0
 rodando = True
 necessita_redesenho = True
@@ -85,7 +85,6 @@ signal.signal(signal.SIGINT, handle_ctrl_c)
 
 # --- Funções de rede ---
 def tratar_mensagem(msg):
-    global vezes_atingido
     parts = msg.split(',')
     if not parts:
         return
@@ -105,7 +104,7 @@ def tratar_mensagem(msg):
         active_opponents[leaving_id] = False
         interface.adicionar_log(f"[NET] Jogador {leaving_id} saiu — não enviaremos mais mensagens para ele")
 
-    elif cmd.startswith("LOST"):
+    elif msg.strip().upper().startswith("LOST"):
         interface.adicionar_log(f"[NET] Adversário declarou DERROTA - você venceu!")
         active_opponents[OPPONENT_ID] = False
 
@@ -116,7 +115,7 @@ def tratar_resposta_tcp(msg):
         resultado, x, y, autor = parts[0], int(parts[1]), int(parts[2]), int(parts[3])
         interface.adicionar_log(f"[TCP-RECEBIDO] {resultado.upper()} em ({x},{y}) de J{autor}")
 
-        if resultado.lower() == "hit":
+        if resultado.lower() in ("hit", "destroyed"):
             pos = (x, y)
             if pos in meus_tiros_enviados:
                 entry = meus_tiros_enviados[pos]
@@ -128,19 +127,6 @@ def tratar_resposta_tcp(msg):
                     if opp is not None:
                         hits_by_player.setdefault(opp, 0)
                         hits_by_player[opp] += 1
-
-        elif resultado.lower() == "destroyed":
-            interface.adicionar_log(f"[REDE] Último navio destruído!")
-            pos = (x, y)
-            if pos in meus_tiros_enviados:
-                entry = meus_tiros_enviados[pos]
-                entry["status"] = "acertou"
-                jogadores[0]["acertos"] += 1
-                interface.atualizar_jogadores(jogadores)
-                opp = entry.get("opponent")
-                if opp is not None:
-                    hits_by_player.setdefault(opp, 0)
-                    hits_by_player[opp] += 1
     except Exception as e:
         print("[ERRO CALLBACK TCP]", e, msg)
 
@@ -165,12 +151,16 @@ while rodando:
             if evento_rede["tipo"] == "tiro":
                 x, y, autor = evento_rede["x"], evento_rede["y"], evento_rede["autor"]
                 resultado = tabuleiro.receber_tiro(x, y)
-                interface.adicionar_log(f"[REDE] Tiro de J{autor} em ({x},{y}) -> {resultado}")
+                if tabuleiro.todos_destruidos() and resultado.lower() != "miss":
+                    resultado = "destroyed"
+                    interface.adicionar_log(f"[REDE] Último navio destruído!")
+                else:
+                    interface.adicionar_log(f"[REDE] Tiro de J{autor} em ({x},{y}) -> {resultado}")
                 if resultado in ("hit", "destroyed"):
                     jogadores[1]["acertos"] += 1
                     interface.atualizar_jogadores(jogadores)
                     vezes_atingido += 1
-                threading.Thread(target=enviar_resposta_tcp, args=(autor, resultado, x, y, PLAYER_ID), daemon=True).start()
+                    threading.Thread(target=enviar_resposta_tcp, args=(autor, resultado, x, y, PLAYER_ID), daemon=True).start()
             fila_rede.task_done()
     except queue.Empty:
         pass
@@ -188,10 +178,9 @@ while rodando:
                     pass
                 rodando = False
 
-    # Tiros automáticos com intervalo randomizado
+    # Tiros automáticos (intervalo randomizado)
     tempo_tiro += clock.tick(60)
-    intervalo_tiro = intervalo_tiro_base + random.randint(0, intervalo_tiro_random)
-    if tempo_tiro >= intervalo_tiro and posicoes_disponiveis and any(active_opponents.values()):
+    if tempo_tiro >= random.randint(intervalo_tiro_min, intervalo_tiro_max) and posicoes_disponiveis and any(active_opponents.values()):
         x, y = posicoes_disponiveis.pop()
         enviar_tiro(x, y)
         meus_tiros_enviados[(x, y)] = {"opponent": OPPONENT_ID, "status": "pendente"}
@@ -218,31 +207,40 @@ while rodando:
         necessita_redesenho = False
 
     # --- DERROTA ---
-    if tabuleiro.todos_destruidos():
+    if tabuleiro.todos_destruidos() and rodando:
         interface.adicionar_log(f"[DERROTA] Jogador {PLAYER_ID} foi derrotado!")
+
+        # Envia DERROTA repetidamente
+        for _ in range(3):
+            try:
+                enviar_derrota()
+                interface.adicionar_log("[UDP ENVIO DERROTA] LOST enviado")
+            except Exception:
+                pass
+            pygame.time.wait(500)
+
+        active_opponents = {k: False for k in active_opponents}
+
+        # Envia SAINDO
         try:
-            enviar_derrota()
-            interface.adicionar_log("[UDP ENVIO DERROTA] LOST enviado")
             enviar_saida()
             interface.adicionar_log("[UDP ENVIO SAIDA] SAINDO enviado")
         except Exception:
             pass
-        active_opponents = {k: False for k in active_opponents}
-        # Delay para garantir que o outro jogador receba a mensagem
-        pygame.time.wait(2000)
+
+        pygame.time.wait(1000)
         rodando = False
 
     # --- VITÓRIA ---
     total_acertos_necessarios = 14
-    if jogadores[0]["acertos"] >= total_acertos_necessarios:
+    if jogadores[0]["acertos"] >= total_acertos_necessarios and rodando:
         interface.adicionar_log(f"[VITÓRIA] Jogador {PLAYER_ID} venceu!")
+        # Envia SAINDO
         try:
             enviar_saida()
-            interface.adicionar_log("[UDP ENVIO SAIDA] SAINDO enviado")
         except Exception:
             pass
-        # Delay para garantir que o outro jogador processe a derrota
-        pygame.time.wait(2000)
+        pygame.time.wait(3000)
         rodando = False
 
 pygame.quit()
