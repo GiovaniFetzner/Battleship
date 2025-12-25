@@ -11,6 +11,8 @@ public class Game {
     private GameState state;
     private Player winner;
     private final List<Player> players;
+    private Turn currentTurn;
+    private int turnCounter;
 
     public Game(Player player1, Player player2) {
         this.player1 = player1;
@@ -22,10 +24,14 @@ public class Game {
 
     public void start() {
         this.state = GameState.IN_PROGRESS;
+        this.turnCounter = 1;
+        this.currentTurn = new Turn(currentPlayer, turnCounter);
     }
 
     public void nextTurn() {
         currentPlayer = (currentPlayer == player1) ? player2 : player1;
+        turnCounter++;
+        currentTurn = new Turn(currentPlayer, turnCounter);
     }
 
     public void checkGameOver() {
@@ -36,7 +42,7 @@ public class Game {
             state = GameState.FINISHED;
             winner = player1;
         } else {
-            winner = null; // Ensure no winner is set if the game is not finished
+            winner = null;
         }
     }
 
@@ -54,7 +60,6 @@ public class Game {
         return null;
     }
 
-
     public GameState getState() {
         return state;
     }
@@ -65,5 +70,9 @@ public class Game {
 
     public Player getWinner() {
         return winner;
+    }
+
+    public Turn getCurrentTurn() {
+        return currentTurn;
     }
 }
