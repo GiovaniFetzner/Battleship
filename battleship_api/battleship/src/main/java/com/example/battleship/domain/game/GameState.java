@@ -1,4 +1,7 @@
 package com.example.battleship.domain.game;
 
-public class GameState {
+public enum GameState {
+    WAITING,
+    IN_PROGRESS,
+    FINISHED
 }

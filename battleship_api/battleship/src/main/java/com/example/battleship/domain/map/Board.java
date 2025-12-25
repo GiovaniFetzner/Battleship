@@ -2,6 +2,8 @@ package com.example.battleship.domain.map;
 
 import com.example.battleship.exception.InvalidMoveException;
 
+import java.util.Arrays;
+
 public class Board {
 
     private final int width;
@@ -53,4 +55,16 @@ public class Board {
         return AttackResult.MISS;
     }
 
+    public boolean allShipsDestroyed() {
+        return Arrays.stream(cells)
+                .flatMap(Arrays::stream)
+                .noneMatch(Cell::hasShip);
+    }
+
+    public void destroyAllShips() {
+        Arrays.stream(cells)
+                .flatMap(Arrays::stream)
+                .filter(Cell::hasShip)
+                .forEach(cell -> cell.attack());
+    }
 }
