@@ -1,5 +1,7 @@
 package com.example.battleship.domain.map;
 
+import com.example.battleship.exception.InvalidMoveException;
+
 public class Cell {
 
     private Coordinate coordinate;
@@ -19,6 +21,11 @@ public class Cell {
     }
 
     public  AttackResult attack(){
+
+        if (attacked){
+            throw new InvalidMoveException("Cell already attacked!");
+        }
+
         this.attacked = true;
 
         if(ship == null){
@@ -35,5 +42,9 @@ public class Cell {
 
     void placeShip (Ship ship){
         this.ship = ship;
+    }
+
+    public boolean hasShip() {
+        return ship != null;
     }
 }

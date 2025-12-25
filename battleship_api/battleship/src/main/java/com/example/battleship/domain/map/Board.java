@@ -1,5 +1,7 @@
 package com.example.battleship.domain.map;
 
+import com.example.battleship.exception.InvalidMoveException;
+
 public class Board {
 
     private final int width;
@@ -22,9 +24,33 @@ public class Board {
         }
     }
 
-    public AttackResult attack(Coordinate coordinate){
+    protected void placeShip(Ship ship, Coordinate coordinate) {
+        positionValidation(coordinate, "Ship cannot be placed outside the board!");
+
         Cell cell = cells[coordinate.getX()][coordinate.getY()];
-        return cell.attack();
+        if (cell.hasShip()) {
+            throw new InvalidMoveException("Cannot place a ship on top of another ship!");
+        }
+
+        cell.placeShip(ship);
+    }
+
+    private void positionValidation(Coordinate coordinate, String message) {
+        if (coordinate.getX() < 0 || coordinate.getX() >= width ||
+                coordinate.getY() < 0 || coordinate.getY() >= height) {
+            throw new InvalidMoveException(message);
+        }
+    }
+
+    public AttackResult attack(Coordinate coordinate) {
+        positionValidation(coordinate, "Attack outside board, please review the coordinates!");
+
+        Cell cell = cells[coordinate.getX()][coordinate.getY()];
+        if (cell.hasShip()) {
+            return cell.attack();
+        }
+
+        return AttackResult.MISS;
     }
 
 }
