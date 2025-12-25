@@ -50,4 +50,31 @@ public class TurnTest {
         assertEquals(player1, currentTurn.getPlayer());
         assertEquals(11, currentTurn.getTurnNumber());
     }
+
+    @Test
+    void shouldNotAllowTurnChangeWhenGameIsFinished() {
+        player2.loseAllShips();
+        game.checkGameOver();
+
+        assertEquals(GameState.FINISHED, game.getState());
+        Turn currentTurn = game.getCurrentTurn();
+        game.nextTurn();
+        assertEquals(currentTurn, game.getCurrentTurn(), "Turn should not change when the game is finished.");
+    }
+
+    @Test
+    void shouldAlternatePlayersCorrectly() {
+        game.nextTurn();
+        assertEquals(player2, game.getCurrentTurn().getPlayer());
+
+        game.nextTurn();
+        assertEquals(player1, game.getCurrentTurn().getPlayer());
+    }
+
+    @Test
+    void shouldIncrementTurnNumberCorrectly() {
+        int initialTurnNumber = game.getCurrentTurn().getTurnNumber();
+        game.nextTurn();
+        assertEquals(initialTurnNumber + 1, game.getCurrentTurn().getTurnNumber());
+    }
 }

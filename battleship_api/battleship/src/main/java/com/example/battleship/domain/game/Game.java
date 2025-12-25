@@ -29,6 +29,9 @@ public class Game {
     }
 
     public void nextTurn() {
+        if (state == GameState.FINISHED) {
+            return;
+        }
         currentPlayer = (currentPlayer == player1) ? player2 : player1;
         turnCounter++;
         currentTurn = new Turn(currentPlayer, turnCounter);

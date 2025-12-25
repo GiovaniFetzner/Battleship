@@ -15,15 +15,8 @@ public class Player {
     public Player(String name) {
         this.name = name;
         this.board = new Board(10, 10);
+        this.ships = List.of();
         this.lostAllShips = false;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public Board getBoard() {
-        return board;
     }
 
     public boolean hasLost() {
