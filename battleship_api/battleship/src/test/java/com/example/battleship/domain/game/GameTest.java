@@ -39,7 +39,10 @@ public class GameTest {
         assertEquals(GameState.IN_PROGRESS, game.getState());
         assertEquals(player1, game.getCurrentPlayer());
 
-        game.nextTurn();
+        player2.getBoard().placeShip(new com.example.battleship.domain.map.Ship(1),
+                                     new Coordinate(0, 0));
+
+        game.attack(new Coordinate(5, 5)); // MISS
         assertEquals(player2, game.getCurrentPlayer());
     }
 
@@ -93,13 +96,18 @@ public class GameTest {
     void shouldIncrementTurnCounter() {
         game.start();
 
-        assertEquals(1, game.getTurnCounter());
+        assertEquals(1, game.getTurnCounter(), "Inicia no turno 1");
+        assertEquals(player1, game.getCurrentPlayer(), "Player1 joga no turno 1");
 
-        game.nextTurn();
-        assertEquals(2, game.getTurnCounter());
+        // Player 1 ataca - após ataque, avança para turno 2 (player2)
+        game.attack(new Coordinate(0, 0)); // MISS no board do player2
+        assertEquals(2, game.getTurnCounter(), "Após ataque de player1, avança para turno 2");
+        assertEquals(player2, game.getCurrentPlayer(), "Player2 joga no turno 2");
 
-        game.nextTurn();
-        assertEquals(3, game.getTurnCounter());
+        // Player 2 ataca - após ataque, avança para turno 3 (player1)
+        game.attack(new Coordinate(0, 1)); // MISS no board do player1
+        assertEquals(3, game.getTurnCounter(), "Após ataque de player2, avança para turno 3");
+        assertEquals(player1, game.getCurrentPlayer(), "Player1 joga novamente no turno 3");
     }
 
     @Test
@@ -129,15 +137,28 @@ public class GameTest {
     void shouldDetectGameOverWhenAllShipsDestroyed() {
         game.start();
 
+        // Posicionar um navio pequeno (tamanho 2) no tabuleiro do player2
         player2.getBoard().placeShip(ShipFactory.createDefaultShips().get(3),
                                      new Coordinate(0, 0), Orientation.HORIZONTAL);
 
-        game.attack(new Coordinate(0, 0));
-        game.attack(new Coordinate(1, 0));
+        // Player 1 ataca e acerta primeira parte do navio (turno avança para player2)
+        AttackResult hit1 = game.attack(new Coordinate(0, 0));
+        assertEquals(AttackResult.HIT, hit1);
+        assertEquals(player2, game.getCurrentPlayer(), "Após ataque de player1, turno avança para player2");
+
+        // Player 2 ataca (miss) - turno avança para player1
+        game.attack(new Coordinate(9, 9));
+        assertEquals(player1, game.getCurrentPlayer(), "Após ataque de player2, turno avança para player1");
+
+        // Player 1 ataca e DESTRÓI o navio - jogo termina, turno NÃO avança
+        AttackResult hit2 = game.attack(new Coordinate(1, 0));
+        assertEquals(AttackResult.DESTROYED, hit2);
 
         assertTrue(game.isGameOver());
         assertEquals(GameState.FINISHED, game.getState());
         assertEquals(player1, game.getWinner());
+        // Player 1 ainda é o jogador atual pois o jogo terminou e não avançou o turno
+        assertEquals(player1, game.getCurrentPlayer());
     }
 
     @Test
@@ -217,95 +238,74 @@ public class GameTest {
         assertEquals(player1, game.getCurrentPlayer());
         assertEquals(1, game.getTurnCounter());
 
-        // === Round 3 switching attacks  ===
+        // === FASE 3: JOGADAS - Turnos avançam automaticamente após cada ataque ===
 
-        // Turn 1 - Player 1
-        AttackResult result1 = game.attack(new Coordinate(5, 5));
+        // Turno 1 - Player 1 ataca
+        AttackResult result1 = game.attack(new Coordinate(5, 5)); // HIT no destroyer do player2
         assertEquals(AttackResult.HIT, result1);
-        assertEquals(player1, game.getCurrentPlayer());
-
-        game.nextTurn();
-        assertEquals(player2, game.getCurrentPlayer());
+        assertEquals(player2, game.getCurrentPlayer(), "Turno deve avançar para player2");
         assertEquals(2, game.getTurnCounter());
 
-        // Turn 2 - Player 2
-        AttackResult result2 = game.attack(new Coordinate(0, 0));
+        // Turno 2 - Player 2 ataca
+        AttackResult result2 = game.attack(new Coordinate(0, 0)); // HIT no destroyer do player1
         assertEquals(AttackResult.HIT, result2);
-        assertFalse(game.isGameOver(), "Game should not be over yet");
-
-        game.nextTurn();
-        assertEquals(player1, game.getCurrentPlayer());
+        assertEquals(player1, game.getCurrentPlayer(), "Turno deve avançar para player1");
         assertEquals(3, game.getTurnCounter());
 
-        // Turn 3 - Player 1 attack and destroy destroyer from player2
-        AttackResult result3 = game.attack(new Coordinate(6, 5)); // DESTROYED
+        // Turno 3 - Player 1 DESTRÓI destroyer do player2
+        AttackResult result3 = game.attack(new Coordinate(6, 5));
         assertEquals(AttackResult.DESTROYED, result3);
-        assertFalse(game.isGameOver(), "Game should not be over - player2 still has cruiser");
-
-        game.nextTurn();
+        assertFalse(game.isGameOver());
         assertEquals(player2, game.getCurrentPlayer());
 
-        // Turn 4 - Player 2 miss the shot
-        AttackResult result4 = game.attack(new Coordinate(5, 0)); // MISS
+        // Turno 4 - Player 2 erra
+        AttackResult result4 = game.attack(new Coordinate(5, 0));
         assertEquals(AttackResult.MISS, result4);
-
-        game.nextTurn();
         assertEquals(player1, game.getCurrentPlayer());
 
-        // Turn 5 - Player 1 attack cruiser from player2
-        AttackResult result5 = game.attack(new Coordinate(8, 7)); // HIT
+        // Turno 5 - Player 1 ataca cruiser do player2
+        AttackResult result5 = game.attack(new Coordinate(8, 7));
         assertEquals(AttackResult.HIT, result5);
-
-        game.nextTurn();
         assertEquals(player2, game.getCurrentPlayer());
 
-        // Turn 6 - Player 2 attack
-        AttackResult result6 = game.attack(new Coordinate(1, 0)); // DESTROYED destroyer from player1
+        // Turno 6 - Player 2 DESTRÓI destroyer do player1
+        AttackResult result6 = game.attack(new Coordinate(1, 0));
         assertEquals(AttackResult.DESTROYED, result6);
-        assertFalse(game.isGameOver(), "Game should not be over - player1 still has cruiser");
-
-        game.nextTurn();
+        assertFalse(game.isGameOver());
         assertEquals(player1, game.getCurrentPlayer());
 
-        // Turn 7 - Player 1 attack cruiser from player2
-        AttackResult result7 = game.attack(new Coordinate(8, 8)); // HIT
+        // Turno 7 - Player 1 continua atacando cruiser do player2
+        AttackResult result7 = game.attack(new Coordinate(8, 8));
         assertEquals(AttackResult.HIT, result7);
-
-        game.nextTurn();
         assertEquals(player2, game.getCurrentPlayer());
 
-        // Turn 8 - Player 2 miss the shot
-        AttackResult result8 = game.attack(new Coordinate(9, 9)); // MISS
+        // Turno 8 - Player 2 erra
+        AttackResult result8 = game.attack(new Coordinate(9, 9));
         assertEquals(AttackResult.MISS, result8);
-
-        game.nextTurn();
         assertEquals(player1, game.getCurrentPlayer());
 
-        // Turn 9 - Player 1 destroy cruiser from player2 and wins
-        AttackResult result9 = game.attack(new Coordinate(8, 9)); // DESTROYED
+        // Turno 9 - Player 1 DESTRÓI cruiser do player2 e VENCE!
+        AttackResult result9 = game.attack(new Coordinate(8, 9));
         assertEquals(AttackResult.DESTROYED, result9);
 
-        // === Round 4: Check game status ===
-        // Player 2 lost all the ships!
+        // === FASE 4: VERIFICAÇÃO DE VITÓRIA ===
         assertTrue(game.isGameOver(), "Game should be over - all player2 ships destroyed");
         assertEquals(GameState.FINISHED, game.getState());
         assertEquals(player1, game.getWinner());
         assertTrue(player2.hasLost(), "Player 2 should have lost");
         assertFalse(player1.hasLost(), "Player 1 should not have lost");
 
-        // Isn't possible to attack anymore
         assertFalse(game.canAttack(), "Should not allow attacks after game ends");
 
-        // Turn should not change after game ends
+        // nextTurn() manual ainda existe mas não deveria ser necessário
+        // Verificar que não tem efeito após o jogo terminar
         Player currentBeforeSwitch = game.getCurrentPlayer();
         game.nextTurn();
         assertEquals(currentBeforeSwitch, game.getCurrentPlayer(),
                      "Current player should not change after game ends");
 
-        // Turn counter should reflect all turns played
         assertTrue(game.getTurnCounter() >= 9, "Should have at least 9 turns");
 
-        // Boards status
         assertTrue(player2.getBoard().allShipsDestroyed(),
                    "All player2 ships should be destroyed");
         assertFalse(player1.getBoard().allShipsDestroyed(),

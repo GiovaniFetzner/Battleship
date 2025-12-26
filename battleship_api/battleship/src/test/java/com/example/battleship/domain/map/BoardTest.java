@@ -140,10 +140,10 @@ public class BoardTest {
     }
 
     @Test
-    void shouldReturnTrueForEmptyBoard() {
+    void shouldReturnFalseForEmptyBoard() {
         Board board = new Board(10, 10);
 
-        Assertions.assertTrue(board.allShipsDestroyed(), "Empty board should have no ships");
+        Assertions.assertFalse(board.allShipsDestroyed(), "Empty board has no ships to be destroyed");
     }
 
     @Test

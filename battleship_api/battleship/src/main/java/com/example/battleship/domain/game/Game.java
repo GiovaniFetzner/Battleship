@@ -37,16 +37,16 @@ public class Game {
             throw new InvalidMoveException("Game is not in progress!");
         }
 
-        if (state == GameState.FINISHED) {
-            throw new InvalidMoveException("Game is already finished!");
-        }
-
         Player opponent = getOpponent(currentPlayer);
         AttackResult result = opponent.getBoard().attack(coordinate);
 
         if (opponent.getBoard().allShipsDestroyed()) {
             opponent.loseAllShips();
             checkGameOver();
+        }
+
+        if (!isGameOver()) {
+            nextTurn();
         }
 
         return result;
