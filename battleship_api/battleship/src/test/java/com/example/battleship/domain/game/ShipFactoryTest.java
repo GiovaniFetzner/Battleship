@@ -1,17 +1,56 @@
 package com.example.battleship.domain.game;
 
 import com.example.battleship.domain.map.Ship;
+import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public class ShipFactoryTest {
-    public static List<Ship> createDefaultShips() {
-        List<Ship> ships = new ArrayList<>();
-        ships.add(new Ship("Porta-Aviões", 5));
-        ships.add(new Ship("Bombardeiro", 4));
-        ships.add(new Ship("Submarino", 3));
-        ships.add(new Ship("Lancha Militar", 2));
-        return ships;
+import static org.junit.jupiter.api.Assertions.*;
+
+class ShipFactoryTest {
+
+    @Test
+    void shouldCreateDefaultShipsWithCorrectQuantity() {
+        List<Ship> ships = ShipFactory.createDefaultShips();
+
+        assertEquals(4, ships.size(), "Should create four ships");
+    }
+
+    @Test
+    void shouldCreateShipsWithCorrectSizes() {
+        List<Ship> ships = ShipFactory.createDefaultShips();
+
+        assertEquals(5, ships.get(0).getSize(), "Porta-Aviões should have size of five");
+        assertEquals(4, ships.get(1).getSize(), "Bombardeiro  should have size of four");
+        assertEquals(3, ships.get(2).getSize(), "Submarino  should have size of three");
+        assertEquals(2, ships.get(3).getSize(), "Lancha Militar  should have size of two");
+    }
+
+    @Test
+    void shouldCreateShipsWithCorrectNames() {
+        List<Ship> ships = ShipFactory.createDefaultShips();
+
+        assertEquals("Porta-Aviões", ships.get(0).getName());
+        assertEquals("Bombardeiro", ships.get(1).getName());
+        assertEquals("Submarino", ships.get(2).getName());
+        assertEquals("Lancha Militar", ships.get(3).getName());
+    }
+
+    @Test
+    void shouldCreateShipsWithZeroHits() {
+        List<Ship> ships = ShipFactory.createDefaultShips();
+
+        for (Ship ship : ships) {
+            assertEquals(0, ship.getHits(), ship.getName() + "Should begin healthy: 0 hits");
+        }
+    }
+
+    @Test
+    void shouldCreateNewInstancesEachTime() {
+        List<Ship> ships1 = ShipFactory.createDefaultShips();
+        List<Ship> ships2 = ShipFactory.createDefaultShips();
+
+        assertNotSame(ships1, ships2, "Should create a new list of ships each time");
+        assertNotSame(ships1.get(0), ships2.get(0), "Checking the new instances");
     }
 }
