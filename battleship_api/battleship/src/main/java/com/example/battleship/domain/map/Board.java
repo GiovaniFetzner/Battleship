@@ -26,7 +26,7 @@ public class Board {
         }
     }
 
-    protected void placeShip(Ship ship, Coordinate coordinate, Orientation orientation) {
+    public void placeShip(Ship ship, Coordinate coordinate, Orientation orientation) {
         positionValidation(coordinate, "Ship cannot be placed outside the board!");
 
         // HORIZONTAL: Y fixo, X varia (incrementa) -> valida se X + size cabe
@@ -60,7 +60,7 @@ public class Board {
         }
     }
 
-    protected void placeShip(Ship ship, Coordinate coordinate) {
+    public void placeShip(Ship ship, Coordinate coordinate) {
         placeShip(ship, coordinate, Orientation.HORIZONTAL);
     }
 

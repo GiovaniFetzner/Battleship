@@ -1,5 +1,9 @@
 package com.example.battleship.domain.game;
 
+import com.example.battleship.domain.map.AttackResult;
+import com.example.battleship.domain.map.Coordinate;
+import com.example.battleship.exception.InvalidMoveException;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -28,6 +32,30 @@ public class Game {
         this.currentTurn = new Turn(currentPlayer, turnCounter);
     }
 
+    public AttackResult attack(Coordinate coordinate) {
+        if (state != GameState.IN_PROGRESS) {
+            throw new InvalidMoveException("Game is not in progress!");
+        }
+
+        if (state == GameState.FINISHED) {
+            throw new InvalidMoveException("Game is already finished!");
+        }
+
+        Player opponent = getOpponent(currentPlayer);
+        AttackResult result = opponent.getBoard().attack(coordinate);
+
+        if (opponent.getBoard().allShipsDestroyed()) {
+            opponent.loseAllShips();
+            checkGameOver();
+        }
+
+        return result;
+    }
+
+    public Player getOpponent(Player player) {
+        return (player == player1) ? player2 : player1;
+    }
+
     public void nextTurn() {
         if (state == GameState.FINISHED) {
             return;
@@ -52,11 +80,13 @@ public class Game {
     public Player checkWinner() {
         if (player1.hasLost()) {
             state = GameState.FINISHED;
+            winner = player2;
             return player2;
         }
 
         if (player2.hasLost()) {
             state = GameState.FINISHED;
+            winner = player1;
             return player1;
         }
 
@@ -77,5 +107,29 @@ public class Game {
 
     public Turn getCurrentTurn() {
         return currentTurn;
+    }
+
+    public Player getPlayer1() {
+        return player1;
+    }
+
+    public Player getPlayer2() {
+        return player2;
+    }
+
+    public int getTurnCounter() {
+        return turnCounter;
+    }
+
+    public boolean isGameOver() {
+        return state == GameState.FINISHED;
+    }
+
+    public boolean canPlaceShips() {
+        return state == GameState.WAITING;
+    }
+
+    public boolean canAttack() {
+        return state == GameState.IN_PROGRESS && !isGameOver();
     }
 }

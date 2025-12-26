@@ -26,9 +26,7 @@ public class Player {
     public void loseAllShips() {
         this.hasLost = true;
         for (Ship ship : ships) {
-            while (ship.getHits() < ship.getSize()){
-                ship.setHits(ship.getSize());
-            }
+            ship.setHits(ship.getSize());
         }
     }
 
@@ -38,5 +36,13 @@ public class Player {
 
     public void setShips(List<Ship> ships) {
         this.ships = ships;
+    }
+
+    public Board getBoard() {
+        return board;
+    }
+
+    public String getName() {
+        return name;
     }
 }
