@@ -10,11 +10,6 @@ public class Cell {
 
     private boolean attacked = false;
 
-    public Cell(Coordinate coordinate, Ship ship) {
-        this.coordinate = coordinate;
-        this.ship = ship;
-    }
-
     public Cell(){
     }
 
