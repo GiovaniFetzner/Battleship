@@ -45,4 +45,8 @@ public class Cell {
     public boolean hasShip() {
         return ship != null;
     }
+
+    public boolean hasAliveShip() {
+        return ship != null && !ship.isDestroyed();
+    }
 }

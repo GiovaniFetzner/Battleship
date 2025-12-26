@@ -26,15 +26,42 @@ public class Board {
         }
     }
 
-    protected void placeShip(Ship ship, Coordinate coordinate) {
+    protected void placeShip(Ship ship, Coordinate coordinate, Orientation orientation) {
         positionValidation(coordinate, "Ship cannot be placed outside the board!");
 
-        Cell cell = cells[coordinate.getX()][coordinate.getY()];
-        if (cell.hasShip()) {
-            throw new InvalidMoveException("Cannot place a ship on top of another ship!");
+        // HORIZONTAL: Y fixo, X varia (incrementa) -> valida se X + size cabe
+        // VERTICAL: X fixo, Y varia (incrementa) -> valida se Y + size cabe
+        if (orientation == Orientation.HORIZONTAL) {
+            if ((coordinate.getX() + ship.getSize()) > width) {
+                throw new InvalidMoveException("Ship cannot be placed outside the board!");
+            }
+        } else { // VERTICAL
+            if ((coordinate.getY() + ship.getSize()) > height) {
+                throw new InvalidMoveException("Ship cannot be placed outside the board!");
+            }
         }
 
-        cell.placeShip(ship);
+        // Verificar se todas as células necessárias estão livres
+        for (int i = 0; i < ship.getSize(); i++) {
+            int x = orientation == Orientation.HORIZONTAL ? coordinate.getX() + i : coordinate.getX();
+            int y = orientation == Orientation.HORIZONTAL ? coordinate.getY() : coordinate.getY() + i;
+
+            if (cells[x][y].hasShip()) {
+                throw new InvalidMoveException("Cannot place a ship on top of another ship!");
+            }
+        }
+
+        // Colocar o navio em todas as células necessárias
+        for (int i = 0; i < ship.getSize(); i++) {
+            int x = orientation == Orientation.HORIZONTAL ? coordinate.getX() + i : coordinate.getX();
+            int y = orientation == Orientation.HORIZONTAL ? coordinate.getY() : coordinate.getY() + i;
+
+            cells[x][y].placeShip(ship);
+        }
+    }
+
+    protected void placeShip(Ship ship, Coordinate coordinate) {
+        placeShip(ship, coordinate, Orientation.HORIZONTAL);
     }
 
     private void positionValidation(Coordinate coordinate, String message) {
@@ -58,7 +85,7 @@ public class Board {
     public boolean allShipsDestroyed() {
         return Arrays.stream(cells)
                 .flatMap(Arrays::stream)
-                .noneMatch(Cell::hasShip);
+                .noneMatch(Cell::hasAliveShip);
     }
 
 }

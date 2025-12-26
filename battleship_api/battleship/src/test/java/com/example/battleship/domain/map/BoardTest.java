@@ -153,9 +153,11 @@ public class BoardTest {
 
         board.placeShip(ship, new Coordinate(3, 3));
 
+        assertEquals(0, ship.getHits(), "Ship should have 0 hits before attacking");
+
         AttackResult result1 = board.attack(new Coordinate(3, 3));
-        AttackResult result2 = board.attack(new Coordinate(3, 4));
-        AttackResult result3 = board.attack(new Coordinate(3, 5));
+        AttackResult result2 = board.attack(new Coordinate(4, 3));
+        AttackResult result3 = board.attack(new Coordinate(5, 3));
 
         assertEquals(AttackResult.HIT, result1, "First hit should return HIT");
         assertEquals(AttackResult.HIT, result2, "Second hit should return HIT");
@@ -169,9 +171,9 @@ public class BoardTest {
         Ship ship2 = new Ship("Bombardeiro", 4);
         Ship ship3 = new Ship("Submarino", 3);
 
-        board.placeShip(ship1, new Coordinate(0, 0));
-        board.placeShip(ship2, new Coordinate(5, 5));
-        board.placeShip(ship3, new Coordinate(8, 8));
+        board.placeShip(ship1, new Coordinate(0, 0)); // Horizontal: (0,0) to (4,0)
+        board.placeShip(ship2, new Coordinate(5, 5)); // Horizontal: (5,5) to (8,5)
+        board.placeShip(ship3, new Coordinate(7, 7)); // Horizontal: (7,7) to (9,7)
 
         AttackResult result1 = board.attack(new Coordinate(0, 0));
         assertEquals(AttackResult.HIT, result1);
@@ -208,6 +210,119 @@ public class BoardTest {
         );
 
         assertEquals("Attack outside board, please review the coordinates!", exception.getMessage());
+    }
+
+    @Test
+    void shouldPlaceShipHorizontally() {
+        Board board = new Board(10, 10);
+        Ship ship = new Ship(3);
+
+        board.placeShip(ship, new Coordinate(2, 2), Orientation.HORIZONTAL);
+
+        AttackResult result1 = board.attack(new Coordinate(2, 2));
+        AttackResult result2 = board.attack(new Coordinate(3, 2));
+        AttackResult result3 = board.attack(new Coordinate(4, 2));
+
+        assertEquals(AttackResult.HIT, result1);
+        assertEquals(AttackResult.HIT, result2);
+        assertEquals(AttackResult.DESTROYED, result3);
+    }
+
+    @Test
+    void shouldPlaceShipVertically() {
+        Board board = new Board(10, 10);
+        Ship ship = new Ship(4);
+
+        board.placeShip(ship, new Coordinate(5, 5), Orientation.VERTICAL);
+
+        AttackResult result1 = board.attack(new Coordinate(5, 5));
+        AttackResult result2 = board.attack(new Coordinate(5, 6));
+        AttackResult result3 = board.attack(new Coordinate(5, 7));
+        AttackResult result4 = board.attack(new Coordinate(5, 8));
+
+        assertEquals(AttackResult.HIT, result1);
+        assertEquals(AttackResult.HIT, result2);
+        assertEquals(AttackResult.HIT, result3);
+        assertEquals(AttackResult.DESTROYED, result4);
+    }
+
+    @Test
+    void shouldNotPlaceHorizontalShipOutsideBoardBoundary() {
+        Board board = new Board(10, 10);
+        Ship ship = new Ship(3);
+
+        InvalidMoveException exception = assertThrows(
+                InvalidMoveException.class,
+                () -> board.placeShip(ship, new Coordinate(8, 5), Orientation.HORIZONTAL)
+        );
+
+        assertEquals("Ship cannot be placed outside the board!", exception.getMessage());
+    }
+
+    @Test
+    void shouldNotPlaceVerticalShipOutsideBoardBoundary() {
+        Board board = new Board(10, 10);
+        Ship ship = new Ship(4);
+
+        InvalidMoveException exception = assertThrows(
+                InvalidMoveException.class,
+                () -> board.placeShip(ship, new Coordinate(5, 8), Orientation.VERTICAL)
+        );
+
+        assertEquals("Ship cannot be placed outside the board!", exception.getMessage());
+    }
+
+    @Test
+    void shouldNotPlaceHorizontalShipOverlappingAnother() {
+        Board board = new Board(10, 10);
+        Ship ship1 = new Ship(3);
+        Ship ship2 = new Ship(2);
+
+        board.placeShip(ship1, new Coordinate(2, 2), Orientation.HORIZONTAL);
+
+        InvalidMoveException exception = assertThrows(
+                InvalidMoveException.class,
+                () -> board.placeShip(ship2, new Coordinate(3, 2), Orientation.HORIZONTAL)
+        );
+
+        assertEquals("Cannot place a ship on top of another ship!", exception.getMessage());
+    }
+
+    @Test
+    void shouldNotPlaceVerticalShipOverlappingAnother() {
+        Board board = new Board(10, 10);
+        Ship ship1 = new Ship(4);
+        Ship ship2 = new Ship(2);
+
+        board.placeShip(ship1, new Coordinate(3, 3), Orientation.VERTICAL);
+
+        InvalidMoveException exception = assertThrows(
+                InvalidMoveException.class,
+                () -> board.placeShip(ship2, new Coordinate(3, 4), Orientation.VERTICAL)
+        );
+
+        assertEquals("Cannot place a ship on top of another ship!", exception.getMessage());
+    }
+
+    @Test
+    void shouldPlaceMultipleShipsWithDifferentOrientations() {
+        Board board = new Board(10, 10);
+        Ship ship1 = new Ship(3);
+        Ship ship2 = new Ship(4);
+        Ship ship3 = new Ship(2);
+
+        board.placeShip(ship1, new Coordinate(0, 0), Orientation.HORIZONTAL);
+        board.placeShip(ship2, new Coordinate(5, 5), Orientation.VERTICAL);
+        board.placeShip(ship3, new Coordinate(8, 8), Orientation.HORIZONTAL);
+
+        assertEquals(AttackResult.HIT, board.attack(new Coordinate(0, 0)));
+        assertEquals(AttackResult.HIT, board.attack(new Coordinate(1, 0)));
+        assertEquals(AttackResult.DESTROYED, board.attack(new Coordinate(2, 0)));
+
+        assertEquals(AttackResult.HIT, board.attack(new Coordinate(5, 5)));
+        assertEquals(AttackResult.HIT, board.attack(new Coordinate(5, 6)));
+
+        Assertions.assertFalse(board.allShipsDestroyed());
     }
 
 }
