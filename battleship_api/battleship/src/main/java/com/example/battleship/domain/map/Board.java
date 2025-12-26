@@ -48,11 +48,11 @@ public class Board {
         positionValidation(coordinate, "Attack outside board, please review the coordinates!");
 
         Cell cell = cells[coordinate.getX()][coordinate.getY()];
-        if (cell.hasShip()) {
-            return cell.attack();
+        if (cell.isAttacked()) {
+            throw new InvalidMoveException("Cell already attacked!");
         }
 
-        return AttackResult.MISS;
+        return cell.attack();
     }
 
     public boolean allShipsDestroyed() {
@@ -61,10 +61,4 @@ public class Board {
                 .noneMatch(Cell::hasShip);
     }
 
-    public void destroyAllShips() {
-        Arrays.stream(cells)
-                .flatMap(Arrays::stream)
-                .filter(Cell::hasShip)
-                .forEach(cell -> cell.attack());
-    }
 }
