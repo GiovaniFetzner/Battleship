@@ -10,26 +10,30 @@ public class Player {
     private final String name;
     private final Board board;
     private List<Ship> ships;
-    private boolean lostAllShips;
+    private boolean hasLost;
 
     public Player(String name) {
         this.name = name;
         this.board = new Board(10, 10);
         this.ships = List.of();
-        this.lostAllShips = false;
+        this.hasLost = false;
     }
 
     public boolean hasLost() {
-        return lostAllShips;
+        return hasLost;
     }
 
     public void loseAllShips() {
-        this.lostAllShips = true;
+        this.hasLost = true;
         for (Ship ship : ships) {
             while (ship.getHits() < ship.getSize()){
-                ship.hit();
+                ship.setHits(ship.getSize());
             }
         }
+    }
+
+    public List<Ship> getShips() {
+        return ships;
     }
 
     public void setShips(List<Ship> ships) {

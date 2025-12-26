@@ -43,4 +43,8 @@ public class Ship {
         return hits;
     }
 
+    public void setHits(int hits) {
+        this.hits = hits;
+    }
+
 }
