@@ -143,10 +143,8 @@ class GameServiceTest {
         gameService.joinGame(game.getGameId(), new JoinGameRequest("Player2"));
         gameService.startGame(game.getGameId());
 
-        // Player2 tenta atacar mas é turno do Player1
         AttackRequest request = new AttackRequest(game.getGameId(), "Player2", 0, 0);
 
-         & Then
         assertThrows(InvalidMoveException.class, () -> {
             gameService.attack(request);
         });
@@ -154,13 +152,10 @@ class GameServiceTest {
 
     @Test
     void shouldGetGameState() {
-        
         GameStateResponse game = gameService.createGame(new JoinGameRequest("Player1"));
 
-        
         GameStateResponse response = gameService.getGameState(game.getGameId(), "Player1");
 
-        
         assertNotNull(response);
         assertEquals(game.getGameId(), response.getGameId());
         assertEquals("WAITING", response.getState());
@@ -168,26 +163,20 @@ class GameServiceTest {
 
     @Test
     void shouldListActiveGames() {
-        
         gameService.createGame(new JoinGameRequest("Player1"));
         gameService.createGame(new JoinGameRequest("Player2"));
 
-        
         var games = gameService.listActiveGames();
 
-        
         assertEquals(2, games.size());
     }
 
     @Test
     void shouldDeleteGame() {
-        
         GameStateResponse game = gameService.createGame(new JoinGameRequest("Player1"));
 
-        
         gameService.deleteGame(game.getGameId());
 
-        
         assertThrows(InvalidMoveException.class, () -> {
             gameService.getGameState(game.getGameId(), "Player1");
         });

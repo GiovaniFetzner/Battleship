@@ -1,6 +1,5 @@
 package com.example.battleship.service.impl;
 
-import com.example.battleship.domain.map.Coordinate;
 import com.example.battleship.domain.map.Orientation;
 import com.example.battleship.service.MapService;
 import org.springframework.stereotype.Service;
@@ -25,28 +24,5 @@ public class MapServiceImpl implements MapService {
         } else {
             return (y + shipSize) <= boardHeight;
         }
-    }
-
-    @Override
-    public Coordinate parseCoordinate(String coordinateStr) {
-        if (coordinateStr == null || coordinateStr.length() < 2) {
-            throw new IllegalArgumentException("Invalid coordinate format");
-        }
-
-        // Formato esperado: "A5" -> x=0, y=4
-        char col = coordinateStr.charAt(0);
-        int row = Integer.parseInt(coordinateStr.substring(1)) - 1;
-
-        int x = Character.toUpperCase(col) - 'A';
-
-        return new Coordinate(x, row);
-    }
-
-    @Override
-    public String formatCoordinate(Coordinate coordinate) {
-        char col = (char) ('A' + coordinate.getX());
-        int row = coordinate.getY() + 1;
-
-        return col + String.valueOf(row);
     }
 }
