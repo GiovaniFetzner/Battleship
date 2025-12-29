@@ -83,6 +83,13 @@ public class Board {
     }
 
     public boolean allShipsDestroyed() {
+        boolean hasAnyShip = Arrays.stream(cells)
+                .flatMap(Arrays::stream)
+                .anyMatch(Cell::hasShip);
+
+        if (!hasAnyShip) {
+            return false;
+        }
 
         return Arrays.stream(cells)
                 .flatMap(Arrays::stream)

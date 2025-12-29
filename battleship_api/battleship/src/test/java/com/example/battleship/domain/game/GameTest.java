@@ -94,18 +94,21 @@ public class GameTest {
 
     @Test
     void shouldIncrementTurnCounter() {
+        player1.getBoard().placeShip(new com.example.battleship.domain.map.Ship("Ship1", 2),
+                new Coordinate(0, 0), Orientation.HORIZONTAL);
+        player2.getBoard().placeShip(new com.example.battleship.domain.map.Ship("Ship2", 2),
+                new Coordinate(5, 5), Orientation.HORIZONTAL);
+
         game.start();
 
         assertEquals(1, game.getTurnCounter(), "Turno 1 - player1");
         assertEquals(player1, game.getCurrentPlayer());
 
-        // Player 1 ataca - turno termina e avança para turno 2
-        game.attack(new Coordinate(0, 0)); // MISS no board do player2
+        game.attack(new Coordinate(9, 9));
         assertEquals(2, game.getTurnCounter(), "Turno 2 - player2");
         assertEquals(player2, game.getCurrentPlayer());
 
-        // Player 2 ataca - turno termina e avança para turno 3
-        game.attack(new Coordinate(0, 1)); // MISS no board do player1
+        game.attack(new Coordinate(9, 8));
         assertEquals(3, game.getTurnCounter(), "Turno 3 - player1 novamente");
         assertEquals(player1, game.getCurrentPlayer());
     }
@@ -135,29 +138,26 @@ public class GameTest {
 
     @Test
     void shouldDetectGameOverWhenAllShipsDestroyed() {
-        game.start();
-
-        // Posicionar um navio pequeno (tamanho 2) no tabuleiro do player2
+        player1.getBoard().placeShip(ShipFactory.createDefaultShips().get(3),
+                                     new Coordinate(5, 5), Orientation.HORIZONTAL);
         player2.getBoard().placeShip(ShipFactory.createDefaultShips().get(3),
                                      new Coordinate(0, 0), Orientation.HORIZONTAL);
 
-        // Player 1 ataca e acerta primeira parte do navio (turno avança)
+        game.start();
+
         AttackResult hit1 = game.attack(new Coordinate(0, 0));
         assertEquals(AttackResult.HIT, hit1);
         assertEquals(player2, game.getCurrentPlayer(), "Turno avança para player2");
 
-        // Player 2 ataca (miss) - turno avança
         game.attack(new Coordinate(9, 9));
         assertEquals(player1, game.getCurrentPlayer(), "Turno avança para player1");
 
-        // Player 1 ataca e DESTRÓI o navio - jogo termina, turno NÃO avança
         AttackResult hit2 = game.attack(new Coordinate(1, 0));
         assertEquals(AttackResult.DESTROYED, hit2);
 
         assertTrue(game.isGameOver());
         assertEquals(GameState.FINISHED, game.getState());
         assertEquals(player1, game.getWinner());
-        // Player 1 ainda é o jogador atual pois o jogo terminou e não avançou o turno
         assertEquals(player1, game.getCurrentPlayer());
     }
 
