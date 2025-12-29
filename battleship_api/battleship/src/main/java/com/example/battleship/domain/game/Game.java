@@ -37,16 +37,24 @@ public class Game {
             throw new InvalidMoveException("Game is not in progress!");
         }
 
+        System.out.println("DEBUG: Antes do ataque - Turno: " + turnCounter + ", Player: " + currentPlayer.getName());
+
         Player opponent = getOpponent(currentPlayer);
         AttackResult result = opponent.getBoard().attack(coordinate);
 
+        // Verifica se o oponente perdeu todos os navios
         if (opponent.getBoard().allShipsDestroyed()) {
             opponent.loseAllShips();
             checkGameOver();
         }
 
+        System.out.println("DEBUG: isGameOver = " + isGameOver());
+
+        // Avança o turno automaticamente, exceto se o jogo terminou
         if (!isGameOver()) {
+            System.out.println("DEBUG: Chamando nextTurn()");
             nextTurn();
+            System.out.println("DEBUG: Após nextTurn() - Turno: " + turnCounter + ", Player: " + currentPlayer.getName());
         }
 
         return result;
