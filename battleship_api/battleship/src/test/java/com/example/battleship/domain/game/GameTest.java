@@ -29,7 +29,10 @@ public class GameTest {
     @Test
     void shouldStartGameWithTwoPlayers() {
         assertEquals(GameState.WAITING, game.getState());
-        assertEquals(player1, game.getCurrentPlayer());
+        assertNull(game.getCurrentPlayer(), "Current player should be null before the game starts");
+        game.start();
+        assertEquals(GameState.IN_PROGRESS, game.getState(), "Game state should be IN_PROGRESS after starting");
+        assertEquals(player1, game.getCurrentPlayer(), "Player 1 should be the first to play");
     }
 
     @Test

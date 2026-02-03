@@ -334,6 +334,154 @@ mvn test -Dtest=GameServiceTest
 
 ---
 
+
+## Definições de arquitetura
+| O que          | Tecnologia |
+| -------------- | ---------- |
+| Criar jogo     | REST       |
+| Entrar no jogo | REST       |
+| Interagir      | WebSocket  |
+| Atualizações   | WebSocket  |
+
+
+## 🧪 Testando com Postman
+
+### JSON de Exemplo para Testes
+Para testar a API, você pode usar o seguinte JSON de exemplo. Salve-o como `sample_game.json` ou use diretamente no Postman:
+
+```json
+{
+  "gameId": "12345",
+  "players": [
+    {
+      "playerId": "player1",
+      "playerName": "Player1",
+      "ships": [
+        {"type": "Battleship", "coordinates": [[1, 1], [1, 2], [1, 3], [1, 4]]},
+        {"type": "Destroyer", "coordinates": [[2, 1], [2, 2], [2, 3]]}
+      ]
+    },
+    {
+      "playerId": "player2",
+      "playerName": "Player2",
+      "ships": [
+        {"type": "Battleship", "coordinates": [[5, 5], [5, 6], [5, 7], [5, 8]]},
+        {"type": "Destroyer", "coordinates": [[6, 5], [6, 6], [6, 7]]}
+      ]
+    }
+  ],
+  "state": "IN_PROGRESS",
+  "turn": "player1"
+}
+```
+
+### Passos para Testar
+1. Abra o Postman.
+2. Crie uma nova requisição POST.
+3. Defina a URL para o endpoint da API (ex.: `http://localhost:8080/api/game`).
+4. No corpo da requisição, selecione `raw` e defina o tipo como `JSON`.
+5. Cole o JSON de exemplo no corpo.
+6. Envie a requisição.
+
+### Endpoints Disponíveis
+
+- **POST /api/game**: Criar um novo jogo.
+- **GET /api/game/{gameId}**: Recuperar detalhes do jogo.
+- **POST /api/game/{gameId}/action**: Realizar uma ação (ex.: ataque).
+
+#### Exemplo de JSON para criar um jogo:
+```json
+{
+  "type": "JOIN_GAME",
+  "playerName": "Player1"
+}
+```
+
+#### Exemplo de JSON de resposta para criar um jogo:
+```json
+{
+  "gameId": "123e4567-e89b-12d3-a456-426614174000",
+  "state": "WAITING",
+  "playerName": "Player1"
+}
+```
+
+### Notas
+- Certifique-se de que o servidor da API está em execução antes de testar.
+- Atualize o `gameId` e os detalhes dos jogadores conforme necessário para seus testes.
+
+---
+
+# Battleship WebSocket API
+
+Este documento fornece instruções para testar a API WebSocket do Battleship usando o Postman. Ele inclui exemplos de JSON para mensagens WebSocket e detalhes sobre os endpoints WebSocket.
+
+## Endpoint WebSocket
+
+O servidor WebSocket está hospedado em:
+```
+ws://localhost:8080/ws/game
+```
+## Tipos de Mensagem
+
+### 1. Join Game
+#### Descrição
+Permite que um jogador entre em um jogo.
+
+#### Exemplo JSON
+```json
+{
+  "type": "JOIN_GAME",
+  "playerName": "Player1"
+}
+```
+
+### 2. Place Ship
+#### Descrição
+Coloca um navio no tabuleiro.
+
+#### Exemplo JSON
+```json
+{
+  "type": "PLACE_SHIP",
+  "gameId": "<game-id>",
+  "playerId": "<player-id>",
+  "shipType": "DESTROYER",
+  "x": 1,
+  "y": 1,
+  "orientation": "HORIZONTAL"
+}
+```
+
+### 3. Attack
+#### Descrição
+Realiza um ataque no tabuleiro do oponente.
+
+#### Exemplo JSON
+```json
+{
+  "type": "ATTACK",
+  "gameId": "<game-id>",
+  "playerId": "<player-id>",
+  "x": 3,
+  "y": 5
+}
+```
+
+## Instruções para Teste
+
+1. Abra o Postman e crie uma nova requisição WebSocket.
+2. Insira a URL do WebSocket: `ws://localhost:8080/ws/game`.
+3. Use os exemplos de JSON fornecidos acima para enviar mensagens ao servidor.
+4. Observe as respostas do servidor no console do Postman.
+
+## Notas
+- Substitua `<game-id>` e `<player-id>` por valores reais obtidos do servidor.
+- Certifique-se de que o servidor esteja em execução antes de testar.
+- Use a mensagem "Join Game" primeiro para criar ou entrar em um jogo.
+- Siga com as mensagens "Place Ship" e "Attack" conforme necessário.
+---
+
 ## 📁 Estrutura do Projeto
 
 ```

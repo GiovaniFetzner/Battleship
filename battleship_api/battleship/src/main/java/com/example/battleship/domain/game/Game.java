@@ -7,9 +7,11 @@ import com.example.battleship.exception.InvalidMoveException;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 public class Game {
 
+    private final String id;
     private Player player1;
     private Player player2;
     private Player currentPlayer;
@@ -19,6 +21,7 @@ public class Game {
     private int turnCounter;
 
     public Game(Player player1, Player player2) {
+        this.id = UUID.randomUUID().toString();
         this.player1 = player1;
         this.player2 = player2;
         this.state = GameState.WAITING;
@@ -149,4 +152,9 @@ public class Game {
         this.state = state;
     }
 
+    public String getId() {
+        return id;
+    }
+
 }
+

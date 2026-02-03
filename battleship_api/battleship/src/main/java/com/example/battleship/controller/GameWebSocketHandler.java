@@ -11,13 +11,18 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) {
+    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+        sessions.put(session.getId(), session);
         System.out.println("Player connected: " + session.getId());
     }
 
@@ -28,9 +33,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         GameBaseMessageRequest gameMessage = objectMapper.readValue(payload, GameBaseMessageRequest.class);
 
         switch (gameMessage.getType()) {
-            case "JOIN_GAME":
-                handleJoinGame(session, (JoinGameBaseRequest) gameMessage);
-                break;
             case "PLACE_SHIP":
                 handlePlaceShip(session, (PlaceShipRequest) gameMessage);
                 break;
@@ -42,9 +44,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private void handleJoinGame(WebSocketSession session, JoinGameBaseRequest request) {
-        System.out.println("Player " + request.getPlayerName() + " wants to join the game.");
-    }
 
     private void handlePlaceShip(WebSocketSession session, PlaceShipRequest request) {
         System.out.println("Placing the ship " + request.getShipName() +
@@ -57,6 +56,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        sessions.remove(session.getId());
         System.out.println("Player disconnected: " + session.getId());
     }
 }

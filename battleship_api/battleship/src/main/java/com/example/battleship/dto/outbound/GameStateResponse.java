@@ -1,12 +1,14 @@
 package com.example.battleship.dto.outbound;
 
-import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
-@JsonTypeName("GAME_STATE")
 public class GameStateResponse extends GameBaseMessageResponse {
+    @JsonProperty("type")
+    private final String type = "GAME_STATE";
+
     private String gameId;
-    private String gameStatus; // "WAITING_FOR_PLAYERS", "SETUP_PHASE", "PLAYING", "FINISHED"
+    private String gameStatus; // "WAITING", "IN_PROGRESS", "FINISHED"
     private String player1Id;
     private String player1Name;
     private String player2Id;
@@ -24,7 +26,7 @@ public class GameStateResponse extends GameBaseMessageResponse {
     public GameStateResponse() {}
 
     @Override
-    public String getType() { return "GAME_STATE"; }
+    public String getType() { return type; }
 
     // Getters e Setters
     public String getGameId() { return gameId; }

@@ -88,12 +88,12 @@ public class GameMapper {
     }
 
     private String mapGameStatus(GameState gameState) {
-        switch (gameState) {
-            case WAITING: return "WAITING_FOR_PLAYERS";
-            case IN_PROGRESS: return "PLAYING";
-            case FINISHED: return "FINISHED";
-            default: return gameState.name();
-        }
+        return switch (gameState) {
+            case WAITING -> "WAITING_FOR_PLAYERS";
+            case IN_PROGRESS -> "PLAYING";
+            case FINISHED -> "FINISHED";
+            default -> gameState.name();
+        };
     }
 
     private Player getOpponent(Game game, Player player) {
@@ -105,10 +105,10 @@ public class GameMapper {
     }
 
     private Player getPlayerById(Game game, String playerId) {
-        if (game.getPlayer1().getId().equals(playerId)) {
+        if (game.getPlayer1() != null && playerId != null && playerId.equals(game.getPlayer1().getId())) {
             return game.getPlayer1();
         }
-        if (game.getPlayer2() != null && game.getPlayer2().getId().equals(playerId)) {
+        if (game.getPlayer2() != null && playerId != null && playerId.equals(game.getPlayer2().getId())) {
             return game.getPlayer2();
         }
         return null;

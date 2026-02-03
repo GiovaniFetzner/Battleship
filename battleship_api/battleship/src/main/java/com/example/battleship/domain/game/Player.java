@@ -13,6 +13,9 @@ public class Player {
     private boolean hasLost;
 
     public Player(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Player name cannot be null or blank");
+        }
         this.id = name;
         this.board = new Board(10, 10);
         this.ships = List.of();

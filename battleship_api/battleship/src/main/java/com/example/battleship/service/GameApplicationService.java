@@ -8,7 +8,7 @@ import com.example.battleship.dto.outbound.GameStateResponse;
 
 import java.util.List;
 
-public interface GameService {
+public interface GameApplicationService {
 
     /**
      * Cria um novo jogo e adiciona o primeiro jogador
