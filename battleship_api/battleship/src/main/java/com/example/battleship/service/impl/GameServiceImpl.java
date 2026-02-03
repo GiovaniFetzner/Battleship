@@ -9,7 +9,7 @@ import com.example.battleship.domain.map.Coordinate;
 import com.example.battleship.domain.map.Orientation;
 import com.example.battleship.domain.map.Ship;
 import com.example.battleship.dto.inbound.AttackRequest;
-import com.example.battleship.dto.inbound.JoinGameRequest;
+import com.example.battleship.dto.inbound.JoinGameBaseRequest;
 import com.example.battleship.dto.inbound.PlaceShipRequest;
 import com.example.battleship.dto.outbound.AttackResultResponse;
 import com.example.battleship.dto.outbound.GameStateResponse;
@@ -32,13 +32,14 @@ public class GameServiceImpl implements GameService {
     }
 
     @Override
-    public GameStateResponse createGame(JoinGameRequest request) {
+    public GameStateResponse createGame(JoinGameBaseRequest request) {
         String gameId = UUID.randomUUID().toString();
 
         Player player1 = new Player(request.getPlayerName());
         player1.setShips(ShipFactory.createDefaultShips());
 
         Game game = new Game(player1, null);
+        game.setState(GameState.WAITING);
         games.put(gameId, game);
 
         GameStateResponse response = gameMapper.toGameStateResponse(game, request.getPlayerName());
@@ -48,8 +49,11 @@ public class GameServiceImpl implements GameService {
     }
 
     @Override
-    public GameStateResponse joinGame(String gameId, JoinGameRequest request) {
-        Game game = getGame(gameId);
+    public GameStateResponse joinGame(String gameId, JoinGameBaseRequest request) {
+        Game game = games.get(gameId);
+        if (game == null) {
+            throw new InvalidMoveException("Game not found!");
+        }
 
         if (game.getPlayer2() != null) {
             throw new InvalidMoveException("Game is already full!");
@@ -57,11 +61,10 @@ public class GameServiceImpl implements GameService {
 
         Player player2 = new Player(request.getPlayerName());
         player2.setShips(ShipFactory.createDefaultShips());
+        game.setPlayer2(player2);
+        game.setState(GameState.WAITING);
 
-        Game updatedGame = new Game(game.getPlayer1(), player2);
-        games.put(gameId, updatedGame);
-
-        GameStateResponse response = gameMapper.toGameStateResponse(updatedGame, request.getPlayerName());
+        GameStateResponse response = gameMapper.toGameStateResponse(game, request.getPlayerName());
         response.setGameId(gameId);
 
         return response;
@@ -81,7 +84,7 @@ public class GameServiceImpl implements GameService {
 
         game.start();
 
-        GameStateResponse response = gameMapper.toGameStateResponse(game, game.getPlayer1().getName());
+        GameStateResponse response = gameMapper.toGameStateResponse(game, game.getPlayer1().getId());
         response.setGameId(gameId);
 
         return response;
@@ -175,10 +178,10 @@ public class GameServiceImpl implements GameService {
     }
 
     private Player findPlayer(Game game, String playerId) {
-        if (game.getPlayer1().getName().equals(playerId)) {
+        if (game.getPlayer1().getId().equals(playerId)) {
             return game.getPlayer1();
         }
-        if (game.getPlayer2() != null && game.getPlayer2().getName().equals(playerId)) {
+        if (game.getPlayer2() != null && game.getPlayer2().getId().equals(playerId)) {
             return game.getPlayer2();
         }
         return null;

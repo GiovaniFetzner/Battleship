@@ -7,13 +7,13 @@ import java.util.List;
 
 public class Player {
 
-    private final String name;
+    private final String id;
     private final Board board;
     private List<Ship> ships;
     private boolean hasLost;
 
     public Player(String name) {
-        this.name = name;
+        this.id = name;
         this.board = new Board(10, 10);
         this.ships = List.of();
         this.hasLost = false;
@@ -42,7 +42,12 @@ public class Player {
         return board;
     }
 
-    public String getName() {
-        return name;
+    public String getId() {
+        return this.id;
+    }
+
+    public int getAliveShipsCount() {
+        if (ships == null) return 0;
+        return (int) ships.stream().filter(ship -> ship.getHits() < ship.getSize()).count();
     }
 }

@@ -1,6 +1,9 @@
 package com.example.battleship.dto.inbound;
 
-public class PlaceShipRequest {
+import com.fasterxml.jackson.annotation.JsonTypeName;
+
+@JsonTypeName("PLACE_SHIP")
+public class PlaceShipRequest extends GameBaseMessageRequest {
     private String gameId;
     private String playerId;
     private String shipName;
@@ -13,7 +16,7 @@ public class PlaceShipRequest {
     }
 
     public PlaceShipRequest(String gameId, String playerId, String shipName, int shipSize,
-                           int x, int y, String orientation) {
+                            int x, int y, String orientation) {
         this.gameId = gameId;
         this.playerId = playerId;
         this.shipName = shipName;
@@ -21,6 +24,11 @@ public class PlaceShipRequest {
         this.x = x;
         this.y = y;
         this.orientation = orientation;
+    }
+
+    @Override
+    public String getType() {
+        return "PLACE_SHIP";
     }
 
     public String getGameId() {

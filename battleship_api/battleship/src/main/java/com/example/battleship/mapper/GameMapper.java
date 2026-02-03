@@ -1,6 +1,7 @@
 package com.example.battleship.mapper;
 
 import com.example.battleship.domain.game.Game;
+import com.example.battleship.domain.game.GameState;
 import com.example.battleship.domain.game.Player;
 import com.example.battleship.domain.map.AttackResult;
 import com.example.battleship.domain.map.Coordinate;
@@ -39,11 +40,11 @@ public class GameMapper {
         response.setResult(result.name());
         response.setX(coordinate.getX());
         response.setY(coordinate.getY());
-        response.setCurrentPlayer(game.getCurrentPlayer().getName());
+        response.setCurrentPlayer(game.getCurrentPlayer().getId());
         response.setGameOver(game.isGameOver());
 
         if (game.getWinner() != null) {
-            response.setWinner(game.getWinner().getName());
+            response.setWinner(game.getWinner().getId());
         }
 
         return response;
@@ -52,37 +53,62 @@ public class GameMapper {
     public GameStateResponse toGameStateResponse(Game game, String playerId) {
         GameStateResponse response = new GameStateResponse();
 
-        response.setState(game.getState().name());
-        response.setPlayer1(game.getPlayer1().getName());
+        response.setGameStatus(mapGameStatus(game.getState()));
+        response.setTurnNumber(game.getTurnCounter());
 
+        response.setPlayer1Id(game.getPlayer1().getId());
+        response.setPlayer1Name(game.getPlayer1().getId());
+        
         if (game.getPlayer2() != null) {
-            response.setPlayer2(game.getPlayer2().getName());
+            response.setPlayer2Id(game.getPlayer2().getId());
+            response.setPlayer2Name(game.getPlayer2().getId());
         }
 
         if (game.getCurrentPlayer() != null) {
-            response.setCurrentPlayer(game.getCurrentPlayer().getName());
+            response.setCurrentPlayer(game.getCurrentPlayer().getId());
+            response.setMyTurn(game.getCurrentPlayer().getId().equals(playerId));
         }
 
-        response.setTurnNumber(game.getTurnCounter());
-        response.setGameOver(game.isGameOver());
-
         if (game.getWinner() != null) {
-            response.setWinner(game.getWinner().getName());
+            response.setWinner(game.getWinner().getId());
         }
 
         Player currentPlayer = getPlayerById(game, playerId);
         if (currentPlayer != null) {
             response.setMyShips(toShipDTOs(currentPlayer.getShips()));
+            response.setMyShipsRemaining(currentPlayer.getAliveShipsCount());
+            
+            Player opponent = getOpponent(game, currentPlayer);
+            if (opponent != null) {
+                response.setOpponentShipsRemaining(opponent.getAliveShipsCount());
+            }
         }
 
         return response;
     }
 
-    private Player getPlayerById(Game game, String playerId) {
-        if (game.getPlayer1().getName().equals(playerId)) {
+    private String mapGameStatus(GameState gameState) {
+        switch (gameState) {
+            case WAITING: return "WAITING_FOR_PLAYERS";
+            case IN_PROGRESS: return "PLAYING";
+            case FINISHED: return "FINISHED";
+            default: return gameState.name();
+        }
+    }
+
+    private Player getOpponent(Game game, Player player) {
+        if (game.getPlayer1().equals(player)) {
+            return game.getPlayer2();
+        } else {
             return game.getPlayer1();
         }
-        if (game.getPlayer2() != null && game.getPlayer2().getName().equals(playerId)) {
+    }
+
+    private Player getPlayerById(Game game, String playerId) {
+        if (game.getPlayer1().getId().equals(playerId)) {
+            return game.getPlayer1();
+        }
+        if (game.getPlayer2() != null && game.getPlayer2().getId().equals(playerId)) {
             return game.getPlayer2();
         }
         return null;

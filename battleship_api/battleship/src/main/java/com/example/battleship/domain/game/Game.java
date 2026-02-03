@@ -2,6 +2,7 @@ package com.example.battleship.domain.game;
 
 import com.example.battleship.domain.map.AttackResult;
 import com.example.battleship.domain.map.Coordinate;
+import com.example.battleship.exception.InsufficientPlayersException;
 import com.example.battleship.exception.InvalidMoveException;
 
 import java.util.Arrays;
@@ -9,26 +10,29 @@ import java.util.List;
 
 public class Game {
 
-    private final Player player1;
-    private final Player player2;
+    private Player player1;
+    private Player player2;
     private Player currentPlayer;
     private GameState state;
     private Player winner;
-    private final List<Player> players;
     private Turn currentTurn;
     private int turnCounter;
 
     public Game(Player player1, Player player2) {
         this.player1 = player1;
         this.player2 = player2;
-        this.players = Arrays.asList(player1, player2);
         this.state = GameState.WAITING;
-        this.currentPlayer = player1;
+        this.currentPlayer = null;
     }
 
     public void start() {
+        if (player2 == null) {
+            throw new InsufficientPlayersException("Cannot start game without two players!");
+        }
+
         this.state = GameState.IN_PROGRESS;
         this.turnCounter = 1;
+        this.currentPlayer = player1;
         this.currentTurn = new Turn(currentPlayer, turnCounter);
     }
 
@@ -117,12 +121,16 @@ public class Game {
         return player2;
     }
 
-    public int getTurnCounter() {
-        return turnCounter;
+    public void setPlayer1(Player player1) {
+        this.player1 = player1;
+    }
+
+    public void setPlayer2(Player player2) {
+        this.player2 = player2;
     }
 
     public boolean isGameOver() {
-        return state == GameState.FINISHED;
+        return this.state == GameState.FINISHED;
     }
 
     public boolean canPlaceShips() {
@@ -132,4 +140,13 @@ public class Game {
     public boolean canAttack() {
         return state == GameState.IN_PROGRESS && !isGameOver();
     }
+
+    public int getTurnCounter() {
+        return this.currentTurn != null ? this.currentTurn.getTurnNumber() : 0;
+    }
+
+    public void setState(GameState state) {
+        this.state = state;
+    }
+
 }

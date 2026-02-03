@@ -1,8 +1,10 @@
 package com.example.battleship.dto.outbound;
 
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.time.LocalDateTime;
 
-public class ErrorResponse {
+@JsonTypeName("ERROR")
+public class ErrorResponse extends GameBaseMessageResponse {
     private String message;
     private String errorCode;
     private LocalDateTime timestamp;
@@ -17,27 +19,15 @@ public class ErrorResponse {
         this.timestamp = LocalDateTime.now();
     }
 
-    public String getMessage() {
-        return message;
-    }
+    @Override
+    public String getType() { return "ERROR"; }
 
-    public void setMessage(String message) {
-        this.message = message;
-    }
+    public String getMessage() { return message; }
+    public void setMessage(String message) { this.message = message; }
 
-    public String getErrorCode() {
-        return errorCode;
-    }
+    public String getErrorCode() { return errorCode; }
+    public void setErrorCode(String errorCode) { this.errorCode = errorCode; }
 
-    public void setErrorCode(String errorCode) {
-        this.errorCode = errorCode;
-    }
-
-    public LocalDateTime getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
-    }
+    public LocalDateTime getTimestamp() { return timestamp; }
+    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
 }

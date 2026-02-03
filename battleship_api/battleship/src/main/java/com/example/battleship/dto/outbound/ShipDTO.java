@@ -6,8 +6,7 @@ public class ShipDTO {
     private int hits;
     private boolean destroyed;
 
-    public ShipDTO() {
-    }
+    public ShipDTO() {}
 
     public ShipDTO(String name, int size, int hits, boolean destroyed) {
         this.name = name;
@@ -16,36 +15,15 @@ public class ShipDTO {
         this.destroyed = destroyed;
     }
 
-    public String getName() {
-        return name;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public int getSize() { return size; }
+    public void setSize(int size) { this.size = size; }
 
-    public int getSize() {
-        return size;
-    }
+    public int getHits() { return hits; }
+    public void setHits(int hits) { this.hits = hits; }
 
-    public void setSize(int size) {
-        this.size = size;
-    }
-
-    public int getHits() {
-        return hits;
-    }
-
-    public void setHits(int hits) {
-        this.hits = hits;
-    }
-
-    public boolean isDestroyed() {
-        return destroyed;
-    }
-
-    public void setDestroyed(boolean destroyed) {
-        this.destroyed = destroyed;
-    }
+    public boolean isDestroyed() { return destroyed; }
+    public void setDestroyed(boolean destroyed) { this.destroyed = destroyed; }
 }
-
