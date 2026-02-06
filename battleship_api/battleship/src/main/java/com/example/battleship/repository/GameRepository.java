@@ -9,7 +9,7 @@ import java.util.Optional;
 @Repository
 public interface GameRepository {
 
-    void save(Game game);
+    void save(String GameId, Game game);
 
     Optional<Game> findById(String gameId);
 

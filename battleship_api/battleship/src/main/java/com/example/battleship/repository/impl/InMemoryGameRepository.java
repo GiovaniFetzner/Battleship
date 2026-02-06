@@ -14,8 +14,8 @@ public class InMemoryGameRepository implements GameRepository {
     private final Map<String, Game> games = new ConcurrentHashMap<>();
 
     @Override
-    public void save(Game game) {
-        games.put(game.getId(), game);
+    public void save(String gameId, Game game) {
+        games.put(gameId, game);
     }
 
     @Override

@@ -11,6 +11,7 @@ import com.example.battleship.dto.inbound.PlaceShipRequest;
 import com.example.battleship.dto.outbound.AttackResultResponse;
 import com.example.battleship.dto.outbound.GameStateResponse;
 import com.example.battleship.dto.outbound.ShipDTO;
+import com.example.battleship.exception.InvalidMoveException;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -52,6 +53,10 @@ public class GameMapper {
 
     public GameStateResponse toGameStateResponse(Game game, String playerId) {
         GameStateResponse response = new GameStateResponse();
+
+        if (game == null) {
+            throw new InvalidMoveException("Game not found!");
+        }
 
         response.setGameStatus(mapGameStatus(game.getState()));
         response.setTurnNumber(game.getTurnCounter());
