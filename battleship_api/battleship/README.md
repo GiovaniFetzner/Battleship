@@ -109,7 +109,6 @@ Conversão entre camadas:
 - **Spring WebSocket** - Comunicação em tempo real
 - **Maven** - Gerenciamento de dependências
 - **JUnit 5** - Testes automatizados
-- **Spring Security** - Autenticação e autorização
 
 ---
 
