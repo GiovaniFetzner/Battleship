@@ -73,6 +73,6 @@ public class GameStateResponse extends GameBaseMessageResponse {
 
     @Override
     public String getType() {
-        return "";
+        return "GAME_STATE";
     }
 }

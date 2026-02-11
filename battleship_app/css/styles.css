@@ -67,6 +67,7 @@ body {
 }
 
 @keyframes float {
+
     0%,
     100% {
         transform: translateY(0) translateX(0);
@@ -99,6 +100,46 @@ h1 {
     margin: 0 0 24px;
     color: var(--muted);
     font-size: 14px;
+}
+
+.board-section {
+    margin-top: 24px;
+    display: grid;
+    gap: 12px;
+}
+
+.board-section h2 {
+    margin: 0;
+    font-size: 16px;
+    letter-spacing: 0.3px;
+}
+
+.board {
+    width: min(320px, 84vw);
+    aspect-ratio: 1;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(10, 1fr);
+    gap: 4px;
+}
+
+.board-cell {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.12s ease, border 0.12s ease;
+}
+
+.board-cell:hover {
+    transform: translateY(-1px);
+    background: rgba(155, 246, 255, 0.2);
+    border-color: rgba(155, 246, 255, 0.55);
+}
+
+.board-cell.is-selected {
+    background: rgba(244, 162, 97, 0.35);
+    border-color: rgba(244, 162, 97, 0.9);
 }
 
 form {
