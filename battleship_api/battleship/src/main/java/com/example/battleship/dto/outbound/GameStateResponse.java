@@ -71,8 +71,4 @@ public class GameStateResponse extends GameBaseMessageResponse {
     public List<AttackDTO> getOpponentAttacks() { return opponentAttacks; }
     public void setOpponentAttacks(List<AttackDTO> opponentAttacks) { this.opponentAttacks = opponentAttacks; }
 
-    @Override
-    public String getType() {
-        return "GAME_STATE";
-    }
 }

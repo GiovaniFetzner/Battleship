@@ -49,4 +49,9 @@ public interface GameApplicationService {
      * Remove um jogo (cleanup)
      */
     void deleteGame(String gameId);
+
+    /**
+     * Adiciona um jogador a um jogo existente usando o código da sala
+     */
+    GameStateResponse joinGameByCode(String roomCode, String playerName);
 }

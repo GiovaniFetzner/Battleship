@@ -1,6 +1,7 @@
 package com.example.battleship.controller;
 
 import com.example.battleship.dto.inbound.JoinGameBaseRequest;
+import com.example.battleship.dto.inbound.JoinGameByCodeRequest;
 import com.example.battleship.dto.outbound.GameStateResponse;
 import com.example.battleship.service.GameApplicationService;
 import org.springframework.http.ResponseEntity;
@@ -37,5 +38,12 @@ public class GameController {
             @RequestParam String playerId) {
 
         return ResponseEntity.ok(gameApplicationService.getGameState(gameId, playerId));
+    }
+
+    @PostMapping("/join-by-code")
+    public ResponseEntity<GameStateResponse> joinGameByCode(
+            @RequestBody JoinGameByCodeRequest request) {
+
+        return ResponseEntity.ok(gameApplicationService.joinGameByCode(request.getRoomCode(), request.getPlayerName()));
     }
 }

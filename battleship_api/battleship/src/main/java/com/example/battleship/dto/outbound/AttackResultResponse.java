@@ -22,9 +22,6 @@ public class AttackResultResponse extends GameBaseMessageResponse {
         this.gameOver = false;
     }
 
-    @Override
-    public String getType() { return "ATTACK_RESULT"; }
-
     public String getResult() { return result; }
 
     public void setResult(String result) { this.result = result; }

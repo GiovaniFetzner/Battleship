@@ -82,6 +82,30 @@ public class GameApplicationServiceImpl implements GameApplicationService {
     }
 
     @Override
+    public GameStateResponse joinGameByCode(String roomCode, String playerName) {
+        Game game = gameRepository.findByRoomCode(roomCode)
+                .orElseThrow(() -> new InvalidMoveException("Game not found for the provided room code!"));
+
+        if (game.getPlayer2() != null) {
+            throw new InvalidMoveException("Game is already full!");
+        }
+
+        Player player2 = new Player(playerName);
+        player2.setShips(ShipFactory.createDefaultShips());
+
+        game.setPlayer2(player2);
+        game.setState(GameState.WAITING);
+
+        gameRepository.save(game.getId(), game);
+
+        GameStateResponse response =
+                gameMapper.toGameStateResponse(game, player2.getId());
+        response.setGameId(game.getId());
+
+        return response;
+    }
+
+    @Override
     public GameStateResponse startGame(String gameId) {
         Game game = getGame(gameId);
 

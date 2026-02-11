@@ -11,5 +11,4 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
         @JsonSubTypes.Type(value = ErrorResponse.class, name = "ERROR")
 })
 public abstract class GameBaseMessageResponse {
-    public abstract String getType();
 }

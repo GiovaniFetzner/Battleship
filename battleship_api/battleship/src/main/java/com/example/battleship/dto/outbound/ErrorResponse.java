@@ -19,9 +19,6 @@ public class ErrorResponse extends GameBaseMessageResponse {
         this.timestamp = LocalDateTime.now();
     }
 
-    @Override
-    public String getType() { return "ERROR"; }
-
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
 

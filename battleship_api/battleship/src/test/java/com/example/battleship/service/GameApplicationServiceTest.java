@@ -46,7 +46,6 @@ class GameApplicationServiceTest {
         assertEquals("Player1", response.getPlayer1Id());
         assertNull(response.getPlayer2Name());
         assertNull(response.getPlayer2Id());
-        assertEquals("GAME_STATE", response.getType());
         assertEquals(0, response.getTurnNumber());
         assertNull(response.getWinner());
         assertNull(response.getCurrentPlayer());
@@ -269,7 +268,6 @@ class GameApplicationServiceTest {
         assertEquals("HIT", response.getResult());
         assertEquals(5, response.getX());
         assertEquals(5, response.getY());
-        assertEquals("ATTACK_RESULT", response.getType());
         assertNotNull(response.getCurrentPlayer());
     }
 
@@ -362,7 +360,6 @@ class GameApplicationServiceTest {
         assertNotNull(response);
         assertEquals(game.getGameId(), response.getGameId());
         assertEquals("WAITING_FOR_PLAYERS", response.getGameStatus());
-        assertEquals("GAME_STATE", response.getType());
         assertEquals(0, response.getTurnNumber());
     }
 
@@ -454,36 +451,6 @@ class GameApplicationServiceTest {
 
     // ==================== Some DTO coverage tests ====================
     
-    @Test
-    void shouldTestRequestDTOTypes() {
-        JoinGameBaseRequest joinRequest = new JoinGameBaseRequest("TestPlayer");
-        assertEquals("JOIN_GAME", joinRequest.getType());
-        
-        AttackRequest attackRequest = new AttackRequest("gameId", "playerId", 1, 2);
-        assertEquals("ATTACK", attackRequest.getType());
-        assertEquals("gameId", attackRequest.getGameId());
-        assertEquals("playerId", attackRequest.getPlayerId());
-        assertEquals(1, attackRequest.getX());
-        assertEquals(2, attackRequest.getY());
-        
-        PlaceShipRequest placeShipRequest = new PlaceShipRequest();
-        placeShipRequest.setGameId("testGame");
-        placeShipRequest.setPlayerId("testPlayer");
-        placeShipRequest.setShipName("TestShip");
-        placeShipRequest.setShipSize(3);
-        placeShipRequest.setX(4);
-        placeShipRequest.setY(5);
-        placeShipRequest.setOrientation("VERTICAL");
-        
-        assertEquals("PLACE_SHIP", placeShipRequest.getType());
-        assertEquals("testGame", placeShipRequest.getGameId());
-        assertEquals("testPlayer", placeShipRequest.getPlayerId());
-        assertEquals("TestShip", placeShipRequest.getShipName());
-        assertEquals(3, placeShipRequest.getShipSize());
-        assertEquals(4, placeShipRequest.getX());
-        assertEquals(5, placeShipRequest.getY());
-        assertEquals("VERTICAL", placeShipRequest.getOrientation());
-    }
 
     @Test
     void shouldTestShipDTOFields() {
@@ -505,14 +472,14 @@ class GameApplicationServiceTest {
     void shouldHandleMultiplePlayersJoiningSimultaneously() {
         GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
         String gameId = game.getGameId();
-        
+
         // Simula múltiplas tentativas simultâneas
         gameApplicationService.joinGame(gameId, new JoinGameBaseRequest("Player2"));
-        
+
         assertThrows(InvalidMoveException.class, () -> {
             gameApplicationService.joinGame(gameId, new JoinGameBaseRequest("Player3"));
         });
-        
+
         assertThrows(InvalidMoveException.class, () -> {
             gameApplicationService.joinGame(gameId, new JoinGameBaseRequest("Player4"));
         });

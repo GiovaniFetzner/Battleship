@@ -16,9 +16,6 @@ public class ShipPlacedResponse extends GameBaseMessageResponse {
         this.shipName = shipName;
     }
 
-    @Override
-    public String getType() { return "SHIP_PLACED"; }
-
     public boolean isSuccess() { return success; }
     public void setSuccess(boolean success) { this.success = success; }
 

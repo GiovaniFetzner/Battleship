@@ -16,4 +16,6 @@ public interface GameRepository {
     void deleteById(String gameId);
 
     Map<String, Game> findAll();
+
+    Optional<Game> findByRoomCode(String roomCode);
 }
