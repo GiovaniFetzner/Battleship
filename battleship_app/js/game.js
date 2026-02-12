@@ -4,10 +4,6 @@ const boardSection = document.getElementById("boardSection");
 const board = document.getElementById("board");
 let boardReady = false;
 
-document
-    .getElementById("createGameBtn")
-    .addEventListener("click", createGame);
-
 createGameForm.addEventListener("submit", event => {
     event.preventDefault();
     createGame();
