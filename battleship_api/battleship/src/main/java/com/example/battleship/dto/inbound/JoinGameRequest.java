@@ -1,18 +1,18 @@
 package com.example.battleship.dto.inbound;
 
 public class JoinGameRequest extends GameMessage {
-    private String roomCode;
+    private String gameId;
     private String playerName;
 
     public JoinGameRequest() {
     }
 
-    public String getRoomCode() {
-        return roomCode;
+    public String getGameId() {
+        return gameId;
     }
 
-    public void setRoomCode(String roomCode) {
-        this.roomCode = roomCode;
+    public void setGameId(String gameId) {
+        this.gameId = gameId;
     }
 
     public String getPlayerName() {

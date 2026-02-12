@@ -41,11 +41,11 @@ public class GameMapper {
         response.setResult(result.name());
         response.setX(coordinate.getX());
         response.setY(coordinate.getY());
-        response.setCurrentPlayer(game.getCurrentPlayer().getId());
+        response.setCurrentPlayer(game.getCurrentPlayer().getName());
         response.setGameOver(game.isGameOver());
 
         if (game.getWinner() != null) {
-            response.setWinner(game.getWinner().getId());
+            response.setWinner(game.getWinner().getName());
         }
 
         return response;
@@ -61,21 +61,21 @@ public class GameMapper {
         response.setGameStatus(mapGameStatus(game.getState()));
         response.setTurnNumber(game.getTurnCounter());
 
-        response.setPlayer1Id(game.getPlayer1().getId());
-        response.setPlayer1Name(game.getPlayer1().getId());
+        response.setPlayer1Id(game.getPlayer1().getName());
+        response.setPlayer1Name(game.getPlayer1().getName());
         
         if (game.getPlayer2() != null) {
-            response.setPlayer2Id(game.getPlayer2().getId());
-            response.setPlayer2Name(game.getPlayer2().getId());
+            response.setPlayer2Id(game.getPlayer2().getName());
+            response.setPlayer2Name(game.getPlayer2().getName());
         }
 
         if (game.getCurrentPlayer() != null) {
-            response.setCurrentPlayer(game.getCurrentPlayer().getId());
-            response.setMyTurn(game.getCurrentPlayer().getId().equals(playerId));
+            response.setCurrentPlayer(game.getCurrentPlayer().getName());
+            response.setMyTurn(game.getCurrentPlayer().getName().equals(playerId));
         }
 
         if (game.getWinner() != null) {
-            response.setWinner(game.getWinner().getId());
+            response.setWinner(game.getWinner().getName());
         }
 
         Player currentPlayer = getPlayerById(game, playerId);
@@ -110,10 +110,10 @@ public class GameMapper {
     }
 
     private Player getPlayerById(Game game, String playerId) {
-        if (game.getPlayer1() != null && playerId != null && playerId.equals(game.getPlayer1().getId())) {
+        if (game.getPlayer1() != null && playerId != null && playerId.equals(game.getPlayer1().getName())) {
             return game.getPlayer1();
         }
-        if (game.getPlayer2() != null && playerId != null && playerId.equals(game.getPlayer2().getId())) {
+        if (game.getPlayer2() != null && playerId != null && playerId.equals(game.getPlayer2().getName())) {
             return game.getPlayer2();
         }
         return null;

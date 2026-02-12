@@ -1,7 +1,7 @@
 package com.example.battleship.controller;
 
-import com.example.battleship.dto.inbound.JoinGameBaseRequest;
-import com.example.battleship.dto.inbound.JoinGameByCodeRequest;
+import com.example.battleship.dto.inbound.CreateGameRequest;
+import com.example.battleship.dto.inbound.JoinGameRequest;
 import com.example.battleship.dto.outbound.GameStateResponse;
 import com.example.battleship.service.GameApplicationService;
 import org.springframework.http.ResponseEntity;
@@ -19,17 +19,9 @@ public class GameController {
 
     @PostMapping
     public ResponseEntity<GameStateResponse> createGame(
-            @RequestBody JoinGameBaseRequest request) {
+            @RequestBody CreateGameRequest request) {
 
         return ResponseEntity.ok(gameApplicationService.createGame(request));
-    }
-
-    @PostMapping("/{gameId}/join")
-    public ResponseEntity<GameStateResponse> joinGame(
-            @PathVariable String gameId,
-            @RequestBody JoinGameBaseRequest request) {
-
-        return ResponseEntity.ok(gameApplicationService.joinGame(gameId, request));
     }
 
     @GetMapping("/{gameId}")
@@ -40,10 +32,10 @@ public class GameController {
         return ResponseEntity.ok(gameApplicationService.getGameState(gameId, playerId));
     }
 
-    @PostMapping("/join-by-code")
+    @PostMapping("/join")
     public ResponseEntity<GameStateResponse> joinGameByCode(
-            @RequestBody JoinGameByCodeRequest request) {
+            @RequestBody JoinGameRequest request) {
 
-        return ResponseEntity.ok(gameApplicationService.joinGameByCode(request.getRoomCode(), request.getPlayerName()));
+        return ResponseEntity.ok(gameApplicationService.joinGame(request.getGameId(), request.getPlayerName()));
     }
 }

@@ -9,10 +9,11 @@ import com.example.battleship.domain.map.Coordinate;
 import com.example.battleship.domain.map.Orientation;
 import com.example.battleship.domain.map.Ship;
 import com.example.battleship.dto.inbound.AttackRequest;
-import com.example.battleship.dto.inbound.JoinGameBaseRequest;
+import com.example.battleship.dto.inbound.CreateGameRequest;
 import com.example.battleship.dto.inbound.PlaceShipRequest;
 import com.example.battleship.dto.outbound.AttackResultResponse;
 import com.example.battleship.dto.outbound.GameStateResponse;
+import com.example.battleship.exception.InsufficientPlayersException;
 import com.example.battleship.exception.InvalidMoveException;
 import com.example.battleship.mapper.GameMapper;
 import com.example.battleship.repository.GameRepository;
@@ -21,7 +22,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class GameApplicationServiceImpl implements GameApplicationService {
@@ -36,55 +36,26 @@ public class GameApplicationServiceImpl implements GameApplicationService {
     }
 
     @Override
-    public GameStateResponse createGame(JoinGameBaseRequest request) {
-        String gameId = UUID.randomUUID().toString();
-
+    public GameStateResponse createGame(CreateGameRequest request) {
         Player player1 = new Player(request.getPlayerName());
         player1.setShips(ShipFactory.createDefaultShips());
 
         Game game = new Game(player1, null);
         game.setState(GameState.WAITING);
 
-        gameRepository.save(gameId, game);
+        gameRepository.save(game);
 
         GameStateResponse response =
-                gameMapper.toGameStateResponse(game, player1.getId());
-        response.setGameId(gameId);
+                gameMapper.toGameStateResponse(game, player1.getName());
+        response.setGameId(game.getId());
 
         return response;
     }
 
     @Override
-    public GameStateResponse joinGame(String gameId, JoinGameBaseRequest request) {
-        Game game = getGame(gameId);
-
-        if (game == null) {
-            throw new InvalidMoveException("Game not found!");
-        }
-
-        if (game.getPlayer2() != null) {
-            throw new InvalidMoveException("Game is already full!");
-        }
-
-        Player player2 = new Player(request.getPlayerName());
-        player2.setShips(ShipFactory.createDefaultShips());
-
-        game.setPlayer2(player2);
-        game.setState(GameState.WAITING);
-
-        gameRepository.save(gameId, game);
-
-        GameStateResponse response =
-                gameMapper.toGameStateResponse(game, player2.getId());
-        response.setGameId(gameId);
-
-        return response;
-    }
-
-    @Override
-    public GameStateResponse joinGameByCode(String roomCode, String playerName) {
-        Game game = gameRepository.findByRoomCode(roomCode)
-                .orElseThrow(() -> new InvalidMoveException("Game not found for the provided room code!"));
+    public GameStateResponse joinGame(String gameId, String playerName) {
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new NullPointerException("Game not found!"));
 
         if (game.getPlayer2() != null) {
             throw new InvalidMoveException("Game is already full!");
@@ -94,27 +65,23 @@ public class GameApplicationServiceImpl implements GameApplicationService {
         player2.setShips(ShipFactory.createDefaultShips());
 
         game.setPlayer2(player2);
-        game.setState(GameState.WAITING);
 
-        gameRepository.save(game.getId(), game);
+        gameRepository.save(game);
 
         GameStateResponse response =
-                gameMapper.toGameStateResponse(game, player2.getId());
+                gameMapper.toGameStateResponse(game, player2.getName());
+
         response.setGameId(game.getId());
 
         return response;
     }
 
     @Override
-    public GameStateResponse startGame(String gameId) {
-        Game game = getGame(gameId);
-
-        if (game == null) {
-            throw new InvalidMoveException("Game not found!");
-        }
+    public GameStateResponse startGame(String gameId){
+        Game game = gameRepository.findById(gameId).orElseThrow(() -> new NullPointerException("Game not found!"));
 
         if (game.getPlayer2() == null) {
-            throw new InvalidMoveException("Cannot start game without two players!");
+            throw new InsufficientPlayersException("Cannot start game without two players!");
         }
 
         if (game.getState() != GameState.WAITING) {
@@ -122,11 +89,11 @@ public class GameApplicationServiceImpl implements GameApplicationService {
         }
 
         game.start();
-        gameRepository.save(gameId, game);
+        gameRepository.save(game);
 
         GameStateResponse response =
-                gameMapper.toGameStateResponse(game, game.getCurrentPlayer().getId());
-        response.setGameId(gameId);
+                gameMapper.toGameStateResponse(game, game.getCurrentPlayer().getName());
+        response.setGameId(game.getId());
 
         return response;
     }
@@ -135,10 +102,10 @@ public class GameApplicationServiceImpl implements GameApplicationService {
     public GameStateResponse placeShip(PlaceShipRequest request) {
         Game game = getGame(request.getGameId());
         if (game == null) {
-            throw new InvalidMoveException("Game not found!");
+            throw new NullPointerException("Game not found!");
         }
 
-        Player player = findPlayer(game, request.getPlayerId());
+        Player player = findPlayer(game, request.getPlayerName());
 
         if (game.getState() != GameState.WAITING) {
             throw new InvalidMoveException("Cannot place ships after game has started!");
@@ -152,10 +119,10 @@ public class GameApplicationServiceImpl implements GameApplicationService {
 
         player.getBoard().placeShip(ship, coordinate, orientation);
 
-        gameRepository.save(game.getId(), game);
+        gameRepository.save(game);
 
         GameStateResponse response =
-                gameMapper.toGameStateResponse(game, request.getPlayerId());
+                gameMapper.toGameStateResponse(game, request.getPlayerName());
         response.setGameId(request.getGameId());
 
         return response;
@@ -166,10 +133,10 @@ public class GameApplicationServiceImpl implements GameApplicationService {
         Game game = getGame(request.getGameId());
 
         if (game == null) {
-            throw new InvalidMoveException("Game not found!");
+            throw new NullPointerException("Game not found!");
         }
 
-        Player player = findPlayer(game, request.getPlayerId());
+        Player player = findPlayer(game, request.getPlayerName());
 
         if (game.getState() != GameState.IN_PROGRESS) {
             throw new InvalidMoveException("Game is not in progress!");
@@ -184,7 +151,7 @@ public class GameApplicationServiceImpl implements GameApplicationService {
 
         AttackResult result = game.attack(coordinate);
 
-        gameRepository.save(game.getId(), game);
+        gameRepository.save(game);
 
         return gameMapper.toAttackResultResponse(result, coordinate, game);
     }
@@ -227,13 +194,13 @@ public class GameApplicationServiceImpl implements GameApplicationService {
 
 
     private Player findPlayer(Game game, String playerId) {
-        if (game.getPlayer1().getId().equals(playerId)) {
+        if (game.getPlayer1().getName().equals(playerId)) {
             return game.getPlayer1();
         }
         if (game.getPlayer2() != null &&
-                game.getPlayer2().getId().equals(playerId)) {
+                game.getPlayer2().getName().equals(playerId)) {
             return game.getPlayer2();
         }
-        throw new InvalidMoveException("Player not found in this game!");
+        throw new NullPointerException("Player not found in this game!");
     }
 }

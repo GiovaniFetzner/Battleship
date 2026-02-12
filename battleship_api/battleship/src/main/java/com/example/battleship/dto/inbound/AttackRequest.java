@@ -3,7 +3,7 @@ package com.example.battleship.dto.inbound;
 public class AttackRequest extends GameMessage {
 
     private String gameId;
-    private String playerId;
+    private String playerName;
     private int x;
     private int y;
 
@@ -12,7 +12,7 @@ public class AttackRequest extends GameMessage {
 
     public AttackRequest(String gameId, String playerId, int x, int y) {
         this.gameId = gameId;
-        this.playerId = playerId;
+        this.playerName = playerId;
         this.x = x;
         this.y = y;
     }
@@ -21,8 +21,8 @@ public class AttackRequest extends GameMessage {
         return gameId;
     }
 
-    public String getPlayerId() {
-        return playerId;
+    public String getPlayerName() {
+        return playerName;
     }
 
     public int getX() {

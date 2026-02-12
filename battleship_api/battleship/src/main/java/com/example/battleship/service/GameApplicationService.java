@@ -1,7 +1,7 @@
 package com.example.battleship.service;
 
 import com.example.battleship.dto.inbound.AttackRequest;
-import com.example.battleship.dto.inbound.JoinGameBaseRequest;
+import com.example.battleship.dto.inbound.CreateGameRequest;
 import com.example.battleship.dto.inbound.PlaceShipRequest;
 import com.example.battleship.dto.outbound.AttackResultResponse;
 import com.example.battleship.dto.outbound.GameStateResponse;
@@ -13,12 +13,7 @@ public interface GameApplicationService {
     /**
      * Cria um novo jogo e adiciona o primeiro jogador
      */
-    GameStateResponse createGame(JoinGameBaseRequest request);
-
-    /**
-     * Adiciona o segundo jogador a um jogo existente
-     */
-    GameStateResponse joinGame(String gameId, JoinGameBaseRequest request);
+    GameStateResponse createGame(CreateGameRequest request);
 
     /**
      * Inicia o jogo (muda estado de WAITING para IN_PROGRESS)
@@ -53,5 +48,5 @@ public interface GameApplicationService {
     /**
      * Adiciona um jogador a um jogo existente usando o código da sala
      */
-    GameStateResponse joinGameByCode(String roomCode, String playerName);
+    GameStateResponse joinGame(String roomCode, String playerName);
 }

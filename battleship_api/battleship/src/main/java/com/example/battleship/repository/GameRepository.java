@@ -9,13 +9,11 @@ import java.util.Optional;
 @Repository
 public interface GameRepository {
 
-    void save(String GameId, Game game);
+    void save(Game game);
 
     Optional<Game> findById(String gameId);
 
     void deleteById(String gameId);
 
     Map<String, Game> findAll();
-
-    Optional<Game> findByRoomCode(String roomCode);
 }

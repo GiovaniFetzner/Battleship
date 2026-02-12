@@ -7,7 +7,7 @@ import java.util.List;
 
 public class Player {
 
-    private final String id;
+    private final String name;
     private final Board board;
     private List<Ship> ships;
     private boolean hasLost;
@@ -16,7 +16,7 @@ public class Player {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Player name cannot be null or blank");
         }
-        this.id = name;
+        this.name = name;
         this.board = new Board(10, 10);
         this.ships = List.of();
         this.hasLost = false;
@@ -45,8 +45,8 @@ public class Player {
         return board;
     }
 
-    public String getId() {
-        return this.id;
+    public String getName() {
+        return this.name;
     }
 
     public int getAliveShipsCount() {

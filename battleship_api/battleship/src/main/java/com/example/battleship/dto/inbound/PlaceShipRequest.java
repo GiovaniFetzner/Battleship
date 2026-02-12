@@ -3,7 +3,7 @@ package com.example.battleship.dto.inbound;
 public class PlaceShipRequest extends GameMessage {
 
     private String gameId;
-    private String playerId;
+    private String playerName;
     private String shipName;
     private int shipSize;
     private int x;
@@ -16,7 +16,7 @@ public class PlaceShipRequest extends GameMessage {
     public PlaceShipRequest(String gameId, String playerId, String shipName, int shipSize,
                             int x, int y, String orientation) {
         this.gameId = gameId;
-        this.playerId = playerId;
+        this.playerName = playerId;
         this.shipName = shipName;
         this.shipSize = shipSize;
         this.x = x;
@@ -32,12 +32,12 @@ public class PlaceShipRequest extends GameMessage {
         this.gameId = gameId;
     }
 
-    public String getPlayerId() {
-        return playerId;
+    public String getPlayerName() {
+        return playerName;
     }
 
-    public void setPlayerId(String playerId) {
-        this.playerId = playerId;
+    public void setPlayerName(String playerName) {
+        this.playerName = playerName;
     }
 
     public String getShipName() {

@@ -25,8 +25,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        GameBaseMessageRequest gameMessage =
-                objectMapper.readValue(message.getPayload(), GameBaseMessageRequest.class);
+        GameMessage gameMessage =
+                objectMapper.readValue(message.getPayload(), GameMessage.class);
 
         if (gameMessage instanceof PlaceShipRequest placeShip) {
             handlePlaceShip(session, placeShip);
@@ -34,10 +34,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         } else if (gameMessage instanceof AttackRequest attack) {
             handleAttack(session, attack);
 
-        } else if (gameMessage instanceof JoinGameByCodeRequest joinByCode) {
+        } else if (gameMessage instanceof JoinGameRequest joinByCode) {
             handleJoinGameByCode(session, joinByCode);
 
-        } else if (gameMessage instanceof JoinGameBaseRequest joinGame) {
+        } else if (gameMessage instanceof CreateGameRequest joinGame) {
             handleJoinGame(session, joinGame);
 
         } else {
@@ -54,14 +54,14 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         System.out.println("Attack in (" + request.getX() + "," + request.getY() + ")");
     }
 
-    private void handleJoinGame(WebSocketSession session, JoinGameBaseRequest request) {
+    private void handleJoinGame(WebSocketSession session, CreateGameRequest request) {
         System.out.println("Player " + request.getPlayerName()
                 + " is creating a new game. Session: " + session.getId());
     }
 
-    private void handleJoinGameByCode(WebSocketSession session, JoinGameByCodeRequest request) {
+    private void handleJoinGameByCode(WebSocketSession session, JoinGameRequest request) {
         System.out.println("Player " + request.getPlayerName()
-                + " is joining room " + request.getRoomCode()
+                + " is joining room " + request.getGameId()
                 + ". Session: " + session.getId());
     }
 

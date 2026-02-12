@@ -46,7 +46,7 @@ public class DtoSerializationTest {
         PlaceShipRequest placeShip = (PlaceShipRequest) deserialized;
 
         assertEquals(request.getGameId(), placeShip.getGameId());
-        assertEquals(request.getPlayerId(), placeShip.getPlayerId());
+        assertEquals(request.getPlayerName(), placeShip.getPlayerName());
         assertEquals(request.getShipName(), placeShip.getShipName());
         assertEquals(request.getShipSize(), placeShip.getShipSize());
         assertEquals(request.getX(), placeShip.getX());
@@ -69,7 +69,7 @@ public class DtoSerializationTest {
         AttackRequest attack = (AttackRequest) deserialized;
 
         assertEquals(request.getGameId(), attack.getGameId());
-        assertEquals(request.getPlayerId(), attack.getPlayerId());
+        assertEquals(request.getPlayerName(), attack.getPlayerName());
         assertEquals(request.getX(), attack.getX());
         assertEquals(request.getY(), attack.getY());
     }
@@ -113,7 +113,7 @@ public class DtoSerializationTest {
 
         AttackRequest resolved = (AttackRequest) base;
         assertEquals("gameId", resolved.getGameId());
-        assertEquals("playerId", resolved.getPlayerId());
+        assertEquals("playerId", resolved.getPlayerName());
         assertEquals(1, resolved.getX());
         assertEquals(2, resolved.getY());
     }
