@@ -1,8 +1,8 @@
 package com.example.battleship.dto;
 
 import com.example.battleship.dto.inbound.AttackRequest;
-import com.example.battleship.dto.inbound.GameBaseMessageRequest;
-import com.example.battleship.dto.inbound.JoinGameBaseRequest;
+import com.example.battleship.dto.inbound.GameMessage;
+import com.example.battleship.dto.inbound.CreateGameRequest;
 import com.example.battleship.dto.inbound.PlaceShipRequest;
 import com.example.battleship.dto.outbound.GameStateResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,16 +17,16 @@ public class DtoSerializationTest {
 
     @Test
     void shouldResolveJoinGameBaseRequestSerialization() throws Exception {
-        JoinGameBaseRequest request = new JoinGameBaseRequest("Player1");
+        CreateGameRequest request = new CreateGameRequest("Player1");
 
         String json = objectMapper.writeValueAsString(request);
 
-        GameBaseMessageRequest deserialized =
-                objectMapper.readValue(json, GameBaseMessageRequest.class);
+        GameMessage deserialized =
+                objectMapper.readValue(json, GameMessage.class);
 
-        assertTrue(deserialized instanceof JoinGameBaseRequest);
+        assertTrue(deserialized instanceof CreateGameRequest);
 
-        JoinGameBaseRequest join = (JoinGameBaseRequest) deserialized;
+        CreateGameRequest join = (CreateGameRequest) deserialized;
         assertEquals("Player1", join.getPlayerName());
     }
 
@@ -38,8 +38,8 @@ public class DtoSerializationTest {
 
         String json = objectMapper.writeValueAsString(request);
 
-        GameBaseMessageRequest deserialized =
-                objectMapper.readValue(json, GameBaseMessageRequest.class);
+        GameMessage deserialized =
+                objectMapper.readValue(json, GameMessage.class);
 
         assertTrue(deserialized instanceof PlaceShipRequest);
 
@@ -61,8 +61,8 @@ public class DtoSerializationTest {
 
         String json = objectMapper.writeValueAsString(request);
 
-        GameBaseMessageRequest deserialized =
-                objectMapper.readValue(json, GameBaseMessageRequest.class);
+        GameMessage deserialized =
+                objectMapper.readValue(json, GameMessage.class);
 
         assertTrue(deserialized instanceof AttackRequest);
 
@@ -106,8 +106,8 @@ public class DtoSerializationTest {
 
         String json = mapper.writeValueAsString(attack);
 
-        GameBaseMessageRequest base =
-                mapper.readValue(json, GameBaseMessageRequest.class);
+        GameMessage base =
+                mapper.readValue(json, GameMessage.class);
 
         assertTrue(base instanceof AttackRequest);
 

@@ -1,8 +1,6 @@
 package com.example.battleship.dto.inbound;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-public class PlaceShipRequest extends GameBaseMessageRequest {
+public class PlaceShipRequest extends GameMessage {
 
     private String gameId;
     private String playerId;
@@ -80,5 +78,10 @@ public class PlaceShipRequest extends GameBaseMessageRequest {
 
     public void setOrientation(String orientation) {
         this.orientation = orientation;
+    }
+
+    @Override
+    public GameMessageType getType() {
+        return GameMessageType.PLACE_SHIP;
     }
 }

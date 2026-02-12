@@ -1,10 +1,10 @@
 package com.example.battleship.dto.inbound;
 
-public class JoinGameByCodeRequest extends GameBaseMessageRequest{
+public class JoinGameRequest extends GameMessage {
     private String roomCode;
     private String playerName;
 
-    public JoinGameByCodeRequest() {
+    public JoinGameRequest() {
     }
 
     public String getRoomCode() {
@@ -21,5 +21,10 @@ public class JoinGameByCodeRequest extends GameBaseMessageRequest{
 
     public void setPlayerName(String playerName) {
         this.playerName = playerName;
+    }
+
+    @Override
+    public GameMessageType getType() {
+        return GameMessageType.JOIN_GAME;
     }
 }

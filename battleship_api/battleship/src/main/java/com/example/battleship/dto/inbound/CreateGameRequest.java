@@ -1,15 +1,15 @@
 package com.example.battleship.dto.inbound;
 
-public class JoinGameBaseRequest extends GameBaseMessageRequest {
+public class CreateGameRequest extends GameMessage {
 
     private String playerName;
 
     // Default constructor for Jackson
-    public JoinGameBaseRequest() {
+    public CreateGameRequest() {
         this.playerName = null;
     }
 
-    public JoinGameBaseRequest(String playerName) {
+    public CreateGameRequest(String playerName) {
         this.playerName = playerName;
     }
 
@@ -19,5 +19,10 @@ public class JoinGameBaseRequest extends GameBaseMessageRequest {
 
     public void setPlayerName(String playerName) {
         this.playerName = playerName;
+    }
+
+    @Override
+    public GameMessageType getType() {
+        return GameMessageType.CREATE_GAME;
     }
 }

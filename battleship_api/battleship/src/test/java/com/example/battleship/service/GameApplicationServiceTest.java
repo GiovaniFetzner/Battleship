@@ -1,7 +1,7 @@
 package com.example.battleship.service;
 
 import com.example.battleship.dto.inbound.AttackRequest;
-import com.example.battleship.dto.inbound.JoinGameBaseRequest;
+import com.example.battleship.dto.inbound.CreateGameRequest;
 import com.example.battleship.dto.inbound.PlaceShipRequest;
 import com.example.battleship.dto.outbound.AttackResultResponse;
 import com.example.battleship.dto.outbound.GameStateResponse;
@@ -35,7 +35,7 @@ class GameApplicationServiceTest {
     
     @Test
     void shouldCreateGameSuccessfully() {
-        JoinGameBaseRequest request = new JoinGameBaseRequest("Player1");
+        CreateGameRequest request = new CreateGameRequest("Player1");
 
         GameStateResponse response = gameApplicationService.createGame(request);
 
@@ -54,7 +54,7 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldCreateGameWithShips() {
-        JoinGameBaseRequest request = new JoinGameBaseRequest("Player1");
+        CreateGameRequest request = new CreateGameRequest("Player1");
 
         GameStateResponse response = gameApplicationService.createGame(request);
 
@@ -68,11 +68,11 @@ class GameApplicationServiceTest {
     
     @Test
     void shouldJoinGameSuccessfully() {
-        JoinGameBaseRequest player1Request = new JoinGameBaseRequest("Player1");
+        CreateGameRequest player1Request = new CreateGameRequest("Player1");
         GameStateResponse createResponse = gameApplicationService.createGame(player1Request);
         String gameId = createResponse.getGameId();
 
-        JoinGameBaseRequest player2Request = new JoinGameBaseRequest("Player2");
+        CreateGameRequest player2Request = new CreateGameRequest("Player2");
         GameStateResponse response = gameApplicationService.joinGame(gameId, player2Request);
 
         assertNotNull(response);
@@ -87,11 +87,11 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldNotJoinFullGame() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
-        gameApplicationService.joinGame(game.getGameId(), new JoinGameBaseRequest("Player2"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
+        gameApplicationService.joinGame(game.getGameId(), new CreateGameRequest("Player2"));
 
         InvalidMoveException exception = assertThrows(InvalidMoveException.class, () -> {
-            gameApplicationService.joinGame(game.getGameId(), new JoinGameBaseRequest("Player3"));
+            gameApplicationService.joinGame(game.getGameId(), new CreateGameRequest("Player3"));
         });
         
         assertEquals("Game is already full!", exception.getMessage());
@@ -99,7 +99,7 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldNotJoinNonExistentGame() {
-        JoinGameBaseRequest request = new JoinGameBaseRequest("Player1");
+        CreateGameRequest request = new CreateGameRequest("Player1");
         
         InvalidMoveException exception = assertThrows(InvalidMoveException.class, () -> {
             gameApplicationService.joinGame("non-existent-id", request);
@@ -112,8 +112,8 @@ class GameApplicationServiceTest {
     
     @Test
     void shouldStartGameSuccessfully() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
-        gameApplicationService.joinGame(game.getGameId(), new JoinGameBaseRequest("Player2"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
+        gameApplicationService.joinGame(game.getGameId(), new CreateGameRequest("Player2"));
 
         GameStateResponse response = gameApplicationService.startGame(game.getGameId());
 
@@ -124,7 +124,7 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldNotStartGameWithoutTwoPlayers() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
 
         InvalidMoveException exception = assertThrows(InvalidMoveException.class, () -> {
             gameApplicationService.startGame(game.getGameId());
@@ -135,8 +135,8 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldNotStartAlreadyStartedGame() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
-        gameApplicationService.joinGame(game.getGameId(), new JoinGameBaseRequest("Player2"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
+        gameApplicationService.joinGame(game.getGameId(), new CreateGameRequest("Player2"));
         gameApplicationService.startGame(game.getGameId());
 
         InvalidMoveException exception = assertThrows(InvalidMoveException.class, () -> {
@@ -159,7 +159,7 @@ class GameApplicationServiceTest {
     
     @Test
     void shouldPlaceShipSuccessfully() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
 
         PlaceShipRequest request = new PlaceShipRequest(
             game.getGameId(), "Player1", "Battleship", 4, 0, 0, "HORIZONTAL"
@@ -174,7 +174,7 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldPlaceShipWithVerticalOrientation() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
 
         PlaceShipRequest request = new PlaceShipRequest(
             game.getGameId(), "Player1", "Destroyer", 2, 3, 3, "VERTICAL"
@@ -188,7 +188,7 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldPlaceShipWithNullOrientation() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
 
         PlaceShipRequest request = new PlaceShipRequest(
             game.getGameId(), "Player1", "Submarine", 1, 5, 5, null
@@ -202,8 +202,8 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldNotPlaceShipAfterGameStarts() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
-        gameApplicationService.joinGame(game.getGameId(), new JoinGameBaseRequest("Player2"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
+        gameApplicationService.joinGame(game.getGameId(), new CreateGameRequest("Player2"));
         gameApplicationService.startGame(game.getGameId());
 
         PlaceShipRequest request = new PlaceShipRequest(
@@ -219,7 +219,7 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldNotPlaceShipForNonExistentPlayer() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
 
         PlaceShipRequest request = new PlaceShipRequest(
             game.getGameId(), "NonExistentPlayer", "Battleship", 4, 0, 0, "HORIZONTAL"
@@ -249,8 +249,8 @@ class GameApplicationServiceTest {
     
     @Test
     void shouldAttackSuccessfully() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
-        gameApplicationService.joinGame(game.getGameId(), new JoinGameBaseRequest("Player2"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
+        gameApplicationService.joinGame(game.getGameId(), new CreateGameRequest("Player2"));
 
         gameApplicationService.placeShip(new PlaceShipRequest(
             game.getGameId(), "Player1", "Ship1", 2, 0, 0, "HORIZONTAL"
@@ -273,8 +273,8 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldReturnMissOnEmptyPosition() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
-        gameApplicationService.joinGame(game.getGameId(), new JoinGameBaseRequest("Player2"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
+        gameApplicationService.joinGame(game.getGameId(), new CreateGameRequest("Player2"));
 
         gameApplicationService.placeShip(new PlaceShipRequest(
             game.getGameId(), "Player1", "Ship1", 2, 0, 0, "HORIZONTAL"
@@ -296,8 +296,8 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldNotAttackWhenNotYourTurn() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
-        gameApplicationService.joinGame(game.getGameId(), new JoinGameBaseRequest("Player2"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
+        gameApplicationService.joinGame(game.getGameId(), new CreateGameRequest("Player2"));
         gameApplicationService.startGame(game.getGameId());
 
         AttackRequest request = new AttackRequest(game.getGameId(), "Player2", 0, 0);
@@ -311,8 +311,8 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldNotAttackWhenGameNotInProgress() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
-        gameApplicationService.joinGame(game.getGameId(), new JoinGameBaseRequest("Player2"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
+        gameApplicationService.joinGame(game.getGameId(), new CreateGameRequest("Player2"));
 
         AttackRequest request = new AttackRequest(game.getGameId(), "Player1", 0, 0);
 
@@ -325,8 +325,8 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldNotAttackWithNonExistentPlayer() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
-        gameApplicationService.joinGame(game.getGameId(), new JoinGameBaseRequest("Player2"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
+        gameApplicationService.joinGame(game.getGameId(), new CreateGameRequest("Player2"));
         gameApplicationService.startGame(game.getGameId());
 
         AttackRequest request = new AttackRequest(game.getGameId(), "NonExistentPlayer", 0, 0);
@@ -353,7 +353,7 @@ class GameApplicationServiceTest {
     
     @Test
     void shouldGetGameState() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
 
         GameStateResponse response = gameApplicationService.getGameState(game.getGameId(), "Player1");
 
@@ -365,8 +365,8 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldGetGameStateWithBothPlayers() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
-        gameApplicationService.joinGame(game.getGameId(), new JoinGameBaseRequest("Player2"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
+        gameApplicationService.joinGame(game.getGameId(), new CreateGameRequest("Player2"));
 
         GameStateResponse response = gameApplicationService.getGameState(game.getGameId(), "Player2");
 
@@ -379,8 +379,8 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldGetGameStateWithCorrectTurnInfo() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
-        gameApplicationService.joinGame(game.getGameId(), new JoinGameBaseRequest("Player2"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
+        gameApplicationService.joinGame(game.getGameId(), new CreateGameRequest("Player2"));
         gameApplicationService.startGame(game.getGameId());
 
         GameStateResponse response = gameApplicationService.getGameState(game.getGameId(), "Player1");
@@ -406,8 +406,8 @@ class GameApplicationServiceTest {
     
     @Test
     void shouldListActiveGames() {
-        gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
-        gameApplicationService.createGame(new JoinGameBaseRequest("Player2"));
+        gameApplicationService.createGame(new CreateGameRequest("Player1"));
+        gameApplicationService.createGame(new CreateGameRequest("Player2"));
 
         List<GameStateResponse> games = gameApplicationService.listActiveGames();
 
@@ -430,7 +430,7 @@ class GameApplicationServiceTest {
     
     @Test
     void shouldDeleteGame() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
 
         gameApplicationService.deleteGame(game.getGameId());
 
@@ -454,7 +454,7 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldTestShipDTOFields() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
         GameStateResponse response = gameApplicationService.getGameState(game.getGameId(), "Player1");
         
         List<ShipDTO> ships = response.getMyShips();
@@ -470,27 +470,27 @@ class GameApplicationServiceTest {
 
     @Test
     void shouldHandleMultiplePlayersJoiningSimultaneously() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
         String gameId = game.getGameId();
 
         // Simula múltiplas tentativas simultâneas
-        gameApplicationService.joinGame(gameId, new JoinGameBaseRequest("Player2"));
+        gameApplicationService.joinGame(gameId, new CreateGameRequest("Player2"));
 
         assertThrows(InvalidMoveException.class, () -> {
-            gameApplicationService.joinGame(gameId, new JoinGameBaseRequest("Player3"));
+            gameApplicationService.joinGame(gameId, new CreateGameRequest("Player3"));
         });
 
         assertThrows(InvalidMoveException.class, () -> {
-            gameApplicationService.joinGame(gameId, new JoinGameBaseRequest("Player4"));
+            gameApplicationService.joinGame(gameId, new CreateGameRequest("Player4"));
         });
     }
 
     @Test
     void shouldHandleCompleteGameFlow() {
-        GameStateResponse game = gameApplicationService.createGame(new JoinGameBaseRequest("Player1"));
+        GameStateResponse game = gameApplicationService.createGame(new CreateGameRequest("Player1"));
         assertEquals("WAITING_FOR_PLAYERS", game.getGameStatus());
         
-        GameStateResponse joinResponse = gameApplicationService.joinGame(game.getGameId(), new JoinGameBaseRequest("Player2"));
+        GameStateResponse joinResponse = gameApplicationService.joinGame(game.getGameId(), new CreateGameRequest("Player2"));
         assertEquals("WAITING_FOR_PLAYERS", joinResponse.getGameStatus());
         
         gameApplicationService.placeShip(new PlaceShipRequest(
