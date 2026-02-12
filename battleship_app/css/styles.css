@@ -102,6 +102,200 @@ h1 {
     font-size: 14px;
 }
 
+.form-status {
+    min-height: 18px;
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.card-game {
+    width: min(820px, 96vw);
+}
+
+.game-layout {
+    display: grid;
+    gap: 24px;
+}
+
+@media (min-width: 860px) {
+    .game-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+        align-items: start;
+    }
+}
+
+.hud {
+    display: grid;
+    gap: 16px;
+}
+
+.hud-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.hud-header>div {
+    min-width: 0;
+}
+
+.hud-player {
+    margin: 0;
+    font-size: 22px;
+    padding: 10px 0px;
+    letter-spacing: 0.4px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    word-break: break-word;
+}
+
+.hud-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.hud-meta-item {
+    display: grid;
+    gap: 6px;
+    justify-items: start;
+    text-align: left;
+}
+
+.hud-id-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.hud-game-id {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    line-height: 1.2;
+}
+
+.copy-button {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.copy-button:hover {
+    filter: brightness(1.05);
+}
+
+.copy-feedback {
+    font-size: 11px;
+    color: var(--muted);
+    min-height: 14px;
+}
+
+.hud-label {
+    margin: 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+}
+
+.hud-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.hud-card {
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: grid;
+    gap: 6px;
+}
+
+.hud-value {
+    margin: 0;
+    font-size: 14px;
+}
+
+.hud-list {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 6px;
+    color: var(--ink);
+    font-size: 13px;
+}
+
+.hud-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.hud-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    color: var(--ink);
+}
+
+.hud-table th,
+.hud-table td {
+    text-align: left;
+    padding: 8px 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hud-table th {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.hud-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.status-chip {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.waiting {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(244, 162, 97, 0.12);
+    border: 1px solid rgba(244, 162, 97, 0.4);
+    font-size: 13px;
+    color: var(--ink);
+}
+
 .board-section {
     margin-top: 24px;
     display: grid;
