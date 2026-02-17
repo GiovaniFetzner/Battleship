@@ -31,6 +31,10 @@ public class Ship {
         return  destroyed;
     }
 
+    public void setDestroyed(boolean destroyed) {
+        this.destroyed = destroyed;
+    }
+
     public int getSize() {
         return size;
     }

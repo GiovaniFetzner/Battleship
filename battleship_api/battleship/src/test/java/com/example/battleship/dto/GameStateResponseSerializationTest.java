@@ -1,6 +1,6 @@
 package com.example.battleship.dto;
 
-import com.example.battleship.dto.outbound.GameStateResponse;
+import com.example.battleship.dto.rest.outbound.GameStateResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;

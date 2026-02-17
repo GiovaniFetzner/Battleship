@@ -5,8 +5,8 @@ import com.example.battleship.domain.map.Coordinate;
 import com.example.battleship.exception.InsufficientPlayersException;
 import com.example.battleship.exception.InvalidMoveException;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 public class Game {
@@ -14,6 +14,7 @@ public class Game {
     private final String id;
     private Player player1;
     private Player player2;
+    private final Set<String> readyPlayers = new HashSet<>();
     private Player currentPlayer;
     private GameState state;
     private Player winner;
@@ -27,6 +28,23 @@ public class Game {
         this.state = GameState.WAITING;
         this.currentPlayer = null;
     }
+
+    public synchronized void markPlayerReady(String playerName) {
+        validatePlayerExists(playerName);
+        readyPlayers.add(playerName);
+    }
+
+    public synchronized boolean areBothPlayersReady() {
+        return readyPlayers.size() == 2;
+    }
+
+    private void validatePlayerExists(String playerName) {
+        if (!player1.getName().equals(playerName) &&
+                !player2.getName().equals(playerName)) {
+            throw new IllegalArgumentException("Player not part of this game");
+        }
+    }
+
 
     public void start() {
         if (player2 == null) {
@@ -155,6 +173,23 @@ public class Game {
     public String getId() {
         return id;
     }
+
+    public Player findPlayer(Game game, String playerId) {
+
+        if (game.getPlayer1() != null &&
+                game.getPlayer1().getName().equals(playerId)) {
+            return game.getPlayer1();
+        }
+
+        if (game.getPlayer2() != null &&
+                game.getPlayer2().getName().equals(playerId)) {
+            return game.getPlayer2();
+        }
+
+        throw new IllegalArgumentException("Player not found in this game");
+    }
+
+
 
 }
 

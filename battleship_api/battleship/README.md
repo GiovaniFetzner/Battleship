@@ -279,57 +279,46 @@ GameStateResponse state = gameService.getGameState(
 
 ---
 
-## 🧪 Testes
+## 🔄 WebSocket Inbound Messages
 
-### Cobertura Completa - 80 Testes
+Exemplo de JSON para cada tipo:
 
-#### Testes de Domínio (59 testes)
-- ✅ **GameTest**: 17 testes
-  - Criação de jogo
-  - Troca de turnos
-  - Detecção de vitória
-  - Ataques e validações
-  - Jogo completo do início ao fim
-
-- ✅ **BoardTest**: 22 testes
-  - Posicionamento de navios
-  - Ataques (HIT, MISS, DESTROYED)
-  - Validações de limites
-  - Orientações (horizontal/vertical)
-  - Sobreposição de navios
-
-- ✅ **PlayerTest**: 4 testes
-- ✅ **ShipFactoryTest**: 5 testes
-- ✅ **TurnTest**: 6 testes
-- ✅ **CellTest**: 3 testes
-- ✅ **ShipTest**: 1 teste
-- ✅ **BattleshipApplicationTests**: 1 teste
-
-#### Testes de Serviços (21 testes)
-- ✅ **GameServiceTest**: 12 testes
-  - Criar/Entrar/Iniciar jogo
-  - Posicionar navios
-  - Atacar e validações
-  - Gerenciamento de jogos
-  - Validações de turnos
-
-- ✅ **MapServiceTest**: 9 testes
-  - Validação de coordenadas
-  - Validação de posicionamento
-  - Parsing de coordenadas
-  - Formatação de coordenadas
-
-### Executar Testes
-
-```bash
-# Todos os testes
-mvn test
-
-# Testes específicos
-mvn test -Dtest=GameTest
-mvn test -Dtest=GameServiceTest
-...
+🔹 **ATTACK**
+```json
+{
+  "type": "ATTACK",
+  "gameId": "123",
+  "playerId": "p1",
+  "x": 4,
+  "y": 7
+}
 ```
+
+🔹 **PLACE_SHIP**
+```json
+{
+  "type": "PLACE_SHIP",
+  "gameId": "123",
+  "playerId": "p1",
+  "shipType": "DESTROYER",
+  "size": 3,
+  "x": 2,
+  "y": 5,
+  "orientation": "HORIZONTAL"
+}
+```
+
+🔹 **PLAYER_READY**
+```json
+{
+  "type": "PLAYER_READY",
+  "gameId": "123",
+  "playerId": "p1"
+}
+```
+
+---
+
 
 ---
 

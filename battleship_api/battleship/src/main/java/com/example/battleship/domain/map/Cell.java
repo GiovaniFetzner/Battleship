@@ -49,4 +49,8 @@ public class Cell {
     public boolean hasAliveShip() {
         return ship != null && !ship.isDestroyed();
     }
+
+    public Coordinate getCoordinate() {
+        return coordinate;
+    }
 }

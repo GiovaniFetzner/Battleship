@@ -7,10 +7,9 @@ import com.example.battleship.domain.map.AttackResult;
 import com.example.battleship.domain.map.Coordinate;
 import com.example.battleship.domain.map.Orientation;
 import com.example.battleship.domain.map.Ship;
-import com.example.battleship.dto.inbound.PlaceShipRequest;
-import com.example.battleship.dto.outbound.AttackResultResponse;
-import com.example.battleship.dto.outbound.GameStateResponse;
-import com.example.battleship.dto.outbound.ShipDTO;
+import com.example.battleship.dto.rest.outbound.GameStateResponse;
+import com.example.battleship.dto.rest.outbound.ShipResponse;
+import com.example.battleship.dto.webSocket.outbound.AttackResultResponse;
 import com.example.battleship.exception.InvalidMoveException;
 import org.springframework.stereotype.Component;
 
@@ -31,24 +30,18 @@ public class GameMapper {
         return Orientation.valueOf(orientation.toUpperCase());
     }
 
-    public Ship toShip(PlaceShipRequest request) {
-        return new Ship(request.getShipName(), request.getShipSize());
-    }
-
     public AttackResultResponse toAttackResultResponse(AttackResult result, Coordinate coordinate,
                                                        Game game) {
-        AttackResultResponse response = new AttackResultResponse();
-        response.setResult(result.name());
-        response.setX(coordinate.getX());
-        response.setY(coordinate.getY());
-        response.setCurrentPlayer(game.getCurrentPlayer().getName());
-        response.setGameOver(game.isGameOver());
 
-        if (game.getWinner() != null) {
-            response.setWinner(game.getWinner().getName());
-        }
-
-        return response;
+        return new AttackResultResponse(
+                game.getId(),
+                result,
+                game.getCurrentPlayer().getName(),
+                coordinate.getX(),
+                coordinate.getY(),
+                game.isGameOver(),
+                game.getWinner() != null ? game.getWinner().getName() : null
+        );
     }
 
     public GameStateResponse toGameStateResponse(Game game, String playerId) {
@@ -80,7 +73,7 @@ public class GameMapper {
 
         Player currentPlayer = getPlayerById(game, playerId);
         if (currentPlayer != null) {
-            response.setMyShips(toShipDTOs(currentPlayer.getShips()));
+            response.setMyShips(toShipResponses(currentPlayer.getShips()));
             response.setMyShipsRemaining(currentPlayer.getAliveShipsCount());
             
             Player opponent = getOpponent(game, currentPlayer);
@@ -119,18 +112,19 @@ public class GameMapper {
         return null;
     }
 
-    private List<ShipDTO> toShipDTOs(List<Ship> ships) {
-        List<ShipDTO> shipDTOs = new ArrayList<>();
+    private List<ShipResponse> toShipResponses(List<Ship> ships) {
+        List<ShipResponse> responses = new ArrayList<>();
 
         for (Ship ship : ships) {
-            ShipDTO dto = new ShipDTO();
-            dto.setName(ship.getName());
-            dto.setSize(ship.getSize());
-            dto.setHits(ship.getHits());
-            dto.setDestroyed(ship.getHits() >= ship.getSize());
-            shipDTOs.add(dto);
+            ShipResponse response = new ShipResponse();
+            response.setType(ship.getName());
+            response.setSize(ship.getSize());
+            response.setHits(ship.getHits());
+            ship.setDestroyed(response.isDestroyed());
+            responses.add(response);
         }
 
-        return shipDTOs;
+        return responses;
     }
+
 }

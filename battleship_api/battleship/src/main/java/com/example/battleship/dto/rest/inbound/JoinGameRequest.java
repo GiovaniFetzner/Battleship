@@ -1,10 +1,16 @@
-package com.example.battleship.dto.inbound;
+package com.example.battleship.dto.rest.inbound;
 
-public class JoinGameRequest extends GameMessage {
+public class JoinGameRequest {
+
     private String gameId;
     private String playerName;
 
     public JoinGameRequest() {
+    }
+
+    public JoinGameRequest(String gameId, String playerName) {
+        this.gameId = gameId;
+        this.playerName = playerName;
     }
 
     public String getGameId() {
@@ -21,10 +27,5 @@ public class JoinGameRequest extends GameMessage {
 
     public void setPlayerName(String playerName) {
         this.playerName = playerName;
-    }
-
-    @Override
-    public GameMessageType getType() {
-        return GameMessageType.JOIN_GAME;
     }
 }

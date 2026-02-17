@@ -1,10 +1,8 @@
 package com.example.battleship.dto;
 
-import com.example.battleship.dto.inbound.AttackRequest;
-import com.example.battleship.dto.inbound.GameMessage;
-import com.example.battleship.dto.inbound.CreateGameRequest;
-import com.example.battleship.dto.inbound.PlaceShipRequest;
-import com.example.battleship.dto.outbound.GameStateResponse;
+import com.example.battleship.dto.webSocket.inbound.GameMessage;
+import com.example.battleship.dto.rest.inbound.CreateGameRequest;
+import com.example.battleship.dto.rest.outbound.GameStateResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
