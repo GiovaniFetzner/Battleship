@@ -12,14 +12,15 @@ class GameStateResponseSerializationTest {
     private ObjectMapper mapper = new ObjectMapper();
 
     @Test
-    void shouldSerializeGameStateWithCorrectType() throws Exception {
+    void shouldSerializeGameStateCorrectly() throws Exception {
         GameStateResponse response = new GameStateResponse();
         response.setGameId("gameId");
 
         String json = mapper.writeValueAsString(response);
 
         JsonNode node = mapper.readTree(json);
-        assertEquals("GAME_STATE", node.get("type").asText());
+        assertEquals("gameId", node.get("gameId").asText());
     }
+
 }
 

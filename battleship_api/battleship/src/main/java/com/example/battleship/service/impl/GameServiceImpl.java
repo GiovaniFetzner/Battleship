@@ -9,7 +9,6 @@ import com.example.battleship.domain.map.Coordinate;
 import com.example.battleship.domain.map.Orientation;
 import com.example.battleship.domain.map.Ship;
 import com.example.battleship.exception.InvalidMoveException;
-import com.example.battleship.mapper.GameMapper;
 import com.example.battleship.repository.GameRepository;
 import com.example.battleship.service.GameService;
 import org.springframework.stereotype.Service;
@@ -20,14 +19,9 @@ import java.util.List;
 public class GameServiceImpl implements GameService {
 
     private final GameRepository gameRepository;
-    private final GameMapper gameMapper;
-    private final Game game;
 
-    public GameServiceImpl(GameRepository gameRepository,
-                           GameMapper gameMapper, Game game) {
+    public GameServiceImpl(GameRepository gameRepository) {
         this.gameRepository = gameRepository;
-        this.gameMapper = gameMapper;
-        this.game = game;
     }
 
     @Override
