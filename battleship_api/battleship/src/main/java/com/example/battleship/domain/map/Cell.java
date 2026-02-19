@@ -4,42 +4,39 @@ import com.example.battleship.exception.InvalidMoveException;
 
 public class Cell {
 
-    private Coordinate coordinate;
-
     private Ship ship;
-
     private boolean attacked = false;
 
-    public Cell(Coordinate coordinate, Ship ship) {
-        this.coordinate = coordinate;
-        this.ship = ship;
-    }
+    public AttackResult attack() {
 
-    public Cell(){
-    }
-
-    public  AttackResult attack(){
-
-        if (attacked){
+        if (attacked) {
             throw new InvalidMoveException("Cell already attacked!");
         }
 
-        this.attacked = true;
+        attacked = true;
 
-        if(ship == null){
+        if (ship == null) {
             return AttackResult.MISS;
         }
 
         ship.hit();
-        return ship.isDestroyed() ? AttackResult.DESTROYED : AttackResult.HIT;
+
+        return ship.isDestroyed()
+                ? AttackResult.DESTROYED
+                : AttackResult.HIT;
+    }
+
+    void placeShip(Ship ship) {
+
+        if (this.ship != null) {
+            throw new InvalidMoveException("Cell already contains a ship!");
+        }
+
+        this.ship = ship;
     }
 
     public boolean isAttacked() {
         return attacked;
-    }
-
-    void placeShip (Ship ship){
-        this.ship = ship;
     }
 
     public boolean hasShip() {
@@ -48,9 +45,5 @@ public class Cell {
 
     public boolean hasAliveShip() {
         return ship != null && !ship.isDestroyed();
-    }
-
-    public Coordinate getCoordinate() {
-        return coordinate;
     }
 }

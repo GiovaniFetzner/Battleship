@@ -2,7 +2,8 @@ package com.example.battleship.domain.game;
 
 import com.example.battleship.domain.map.AttackResult;
 import com.example.battleship.domain.map.Coordinate;
-import com.example.battleship.exception.InsufficientPlayersException;
+import com.example.battleship.domain.map.Orientation;
+import com.example.battleship.domain.map.Ship;
 import com.example.battleship.exception.InvalidMoveException;
 
 import java.util.HashSet;
@@ -12,111 +13,194 @@ import java.util.UUID;
 public class Game {
 
     private final String id;
-    private Player player1;
+    private final Player player1;
     private Player player2;
+
     private final Set<String> readyPlayers = new HashSet<>();
+
     private Player currentPlayer;
     private GameState state;
     private Player winner;
+
     private Turn currentTurn;
     private int turnCounter;
 
-    public Game(Player player1, Player player2) {
+    public Game(Player player1) {
         this.id = UUID.randomUUID().toString();
         this.player1 = player1;
-        this.player2 = player2;
-        this.state = GameState.WAITING;
-        this.currentPlayer = null;
+        this.state = GameState.WAITING_FOR_PLAYERS;
     }
+
+    /* =============================
+       PLAYER MANAGEMENT
+       ============================= */
+
+    public void addPlayer2(Player player) {
+
+        if (state != GameState.WAITING_FOR_PLAYERS) {
+            throw new InvalidMoveException("Cannot add player at this stage");
+        }
+
+        if (this.player2 != null) {
+            throw new InvalidMoveException("Game is already full");
+        }
+
+        if (player1.getName().equals(player.getName())) {
+            throw new InvalidMoveException("Player name already taken");
+        }
+
+        this.player2 = player;
+        this.state = GameState.PLACING_SHIPS;
+    }
+
+
+    public Player findPlayer(String playerName) {
+
+        if (player1.getName().equals(playerName)) {
+            return player1;
+        }
+
+        if (player2 != null && player2.getName().equals(playerName)) {
+            return player2;
+        }
+
+        throw new IllegalArgumentException("Player not found in this game");
+    }
+
+
+    public Player getOpponent(Player player) {
+
+        if (player2 == null) {
+            throw new InvalidMoveException("Game does not have two players yet");
+        }
+
+        if (player1.getName().equals(player.getName())) {
+            return player2;
+        }
+
+        if (player2.getName().equals(player.getName())) {
+            return player1;
+        }
+
+        throw new IllegalArgumentException("Player not in this game");
+    }
+
+
+    /* =============================
+       SHIP PLACEMENT PHASE
+       ============================= */
+
+    public synchronized void placeShip(
+            String playerName,
+            Ship ship,
+            Coordinate coordinate,
+            Orientation orientation) {
+
+        if (state != GameState.PLACING_SHIPS) {
+            throw new InvalidMoveException("Not in ship placement phase");
+        }
+
+        Player player = findPlayer(playerName);
+
+        player.placeShip(ship, coordinate, orientation);
+    }
+
+    public boolean canPlaceShips() {
+        return state == GameState.PLACING_SHIPS;
+    }
+
+    public synchronized void confirmPlacement(String playerName) {
+
+        Player player = findPlayer(playerName);
+
+        player.confirmShipsPlacement();
+        markPlayerReady(playerName);
+    }
+
 
     public synchronized void markPlayerReady(String playerName) {
-        validatePlayerExists(playerName);
-        readyPlayers.add(playerName);
-    }
 
-    public synchronized boolean areBothPlayersReady() {
-        return readyPlayers.size() == 2;
-    }
+        if (state != GameState.PLACING_SHIPS) {
+            throw new InvalidMoveException("Not in ship placement phase");
+        }
 
-    private void validatePlayerExists(String playerName) {
-        if (!player1.getName().equals(playerName) &&
-                !player2.getName().equals(playerName)) {
-            throw new IllegalArgumentException("Player not part of this game");
+        Player player = findPlayer(playerName);
+
+        if (!player.hasPlacedShips()) {
+            throw new InvalidMoveException("Player has not placed all ships");
+        }
+
+        readyPlayers.add(player.getName());
+
+        if (areBothPlayersReady()) {
+            startBattle();
         }
     }
 
 
-    public void start() {
-        if (player2 == null) {
-            throw new InsufficientPlayersException("Cannot start game without two players!");
-        }
+
+    private boolean areBothPlayersReady() {
+        return player2 != null && readyPlayers.size() == 2;
+    }
+
+    private void startBattle() {
 
         this.state = GameState.IN_PROGRESS;
+        this.currentPlayer = player1; // pode trocar por sorteio depois
         this.turnCounter = 1;
-        this.currentPlayer = player1;
         this.currentTurn = new Turn(currentPlayer, turnCounter);
     }
 
-    public AttackResult attack(Coordinate coordinate) {
+    /* =============================
+       BATTLE PHASE
+       ============================= */
+
+    public AttackResult attack(String playerName, Coordinate coordinate) {
+
         if (state != GameState.IN_PROGRESS) {
-            throw new InvalidMoveException("Game is not in progress!");
+            throw new InvalidMoveException("Game is not in progress");
         }
 
-        Player opponent = getOpponent(currentPlayer);
+        Player attacker = findPlayer(playerName);
+
+        if (!currentPlayer.getName().equals(attacker.getName())) {
+            throw new InvalidMoveException("It's not your turn");
+        }
+
+        Player opponent = getOpponent(attacker);
+
         AttackResult result = opponent.getBoard().attack(coordinate);
 
         if (opponent.getBoard().allShipsDestroyed()) {
-            opponent.loseAllShips();
-            checkGameOver();
+            finishGame(attacker);
+            return result;
         }
 
-        if (!isGameOver()) {
-            nextTurn();
-        }
+        nextTurn();
 
         return result;
     }
 
-    public Player getOpponent(Player player) {
-        return (player == player1) ? player2 : player1;
-    }
 
-    public void nextTurn() {
+    private void nextTurn() {
+
         if (state == GameState.FINISHED) {
             return;
         }
+
         currentPlayer = (currentPlayer == player1) ? player2 : player1;
         turnCounter++;
         currentTurn = new Turn(currentPlayer, turnCounter);
     }
 
-    public void checkGameOver() {
-        if (player1.hasLost()) {
-            state = GameState.FINISHED;
-            winner = player2;
-        } else if (player2.hasLost()) {
-            state = GameState.FINISHED;
-            winner = player1;
-        } else {
-            winner = null;
-        }
+    private void finishGame(Player winner) {
+        this.state = GameState.FINISHED;
+        this.winner = winner;
     }
 
-    public Player checkWinner() {
-        if (player1.hasLost()) {
-            state = GameState.FINISHED;
-            winner = player2;
-            return player2;
-        }
-
-        if (player2.hasLost()) {
-            state = GameState.FINISHED;
-            winner = player1;
-            return player1;
-        }
-
-        return null;
-    }
+    /* =============================
+       GETTERS
+       ============================= */
 
     public GameState getState() {
         return state;
@@ -142,54 +226,19 @@ public class Game {
         return player2;
     }
 
-    public void setPlayer1(Player player1) {
-        this.player1 = player1;
-    }
-
-    public void setPlayer2(Player player2) {
-        this.player2 = player2;
-    }
-
     public boolean isGameOver() {
-        return this.state == GameState.FINISHED;
-    }
-
-    public boolean canPlaceShips() {
-        return state == GameState.WAITING;
+        return state == GameState.FINISHED;
     }
 
     public boolean canAttack() {
-        return state == GameState.IN_PROGRESS && !isGameOver();
+        return state == GameState.IN_PROGRESS;
     }
 
     public int getTurnCounter() {
-        return this.currentTurn != null ? this.currentTurn.getTurnNumber() : 0;
-    }
-
-    public void setState(GameState state) {
-        this.state = state;
+        return currentTurn != null ? currentTurn.turnNumber() : 0;
     }
 
     public String getId() {
         return id;
     }
-
-    public Player findPlayer(Game game, String playerId) {
-
-        if (game.getPlayer1() != null &&
-                game.getPlayer1().getName().equals(playerId)) {
-            return game.getPlayer1();
-        }
-
-        if (game.getPlayer2() != null &&
-                game.getPlayer2().getName().equals(playerId)) {
-            return game.getPlayer2();
-        }
-
-        throw new IllegalArgumentException("Player not found in this game");
-    }
-
-
-
 }
-

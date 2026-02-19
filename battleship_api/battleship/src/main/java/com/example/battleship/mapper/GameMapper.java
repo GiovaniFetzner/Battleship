@@ -1,20 +1,14 @@
 package com.example.battleship.mapper;
 
 import com.example.battleship.domain.game.Game;
-import com.example.battleship.domain.game.GameState;
 import com.example.battleship.domain.game.Player;
 import com.example.battleship.domain.map.AttackResult;
 import com.example.battleship.domain.map.Coordinate;
 import com.example.battleship.domain.map.Orientation;
-import com.example.battleship.domain.map.Ship;
 import com.example.battleship.dto.rest.outbound.GameStateResponse;
-import com.example.battleship.dto.rest.outbound.ShipResponse;
 import com.example.battleship.dto.webSocket.outbound.AttackResultResponse;
 import com.example.battleship.exception.InvalidMoveException;
 import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Component
 public class GameMapper {
@@ -37,94 +31,94 @@ public class GameMapper {
                 game.getId(),
                 result,
                 game.getCurrentPlayer().getName(),
-                coordinate.getX(),
-                coordinate.getY(),
+                coordinate.x(),
+                coordinate.y(),
                 game.isGameOver(),
                 game.getWinner() != null ? game.getWinner().getName() : null
         );
     }
 
-    public GameStateResponse toGameStateResponse(Game game, String playerId) {
-        GameStateResponse response = new GameStateResponse();
+    public GameStateResponse toGameStateResponse(Game game, String playerName) {
 
         if (game == null) {
             throw new InvalidMoveException("Game not found!");
         }
 
-        response.setGameStatus(mapGameStatus(game.getState()));
+        GameStateResponse response = new GameStateResponse();
+
+        response.setGameStatus(game.getState().name());
         response.setTurnNumber(game.getTurnCounter());
 
-        response.setPlayer1Id(game.getPlayer1().getName());
-        response.setPlayer1Name(game.getPlayer1().getName());
-        
+        // Player 1
+        if (game.getPlayer1() != null) {
+            response.setPlayer1Name(game.getPlayer1().getName());
+        }
+
+        // Player 2
         if (game.getPlayer2() != null) {
-            response.setPlayer2Id(game.getPlayer2().getName());
             response.setPlayer2Name(game.getPlayer2().getName());
         }
 
+        // Current Player
         if (game.getCurrentPlayer() != null) {
-            response.setCurrentPlayer(game.getCurrentPlayer().getName());
-            response.setMyTurn(game.getCurrentPlayer().getName().equals(playerId));
+            String currentName = game.getCurrentPlayer().getName();
+            response.setCurrentPlayer(currentName);
+            response.setMyTurn(currentName.equals(playerName));
         }
 
+        // Winner
         if (game.getWinner() != null) {
             response.setWinner(game.getWinner().getName());
         }
 
-        Player currentPlayer = getPlayerById(game, playerId);
-        if (currentPlayer != null) {
-            response.setMyShips(toShipResponses(currentPlayer.getShips()));
-            response.setMyShipsRemaining(currentPlayer.getAliveShipsCount());
-            
-            Player opponent = getOpponent(game, currentPlayer);
+        Player me = getPlayerByName(game, playerName);
+
+        if (me != null) {
+
+            boolean allDestroyed = me.getBoard().allShipsDestroyed();
+
+            response.setMyShipsRemaining(
+                    allDestroyed ? 0 : 1
+            );
+
+            Player opponent = getOpponent(game, me);
+
             if (opponent != null) {
-                response.setOpponentShipsRemaining(opponent.getAliveShipsCount());
+                response.setOpponentShipsRemaining(
+                        opponent.getBoard().allShipsDestroyed() ? 0 : 1
+                );
             }
         }
 
         return response;
     }
 
-    private String mapGameStatus(GameState gameState) {
-        return switch (gameState) {
-            case WAITING -> "WAITING_FOR_PLAYERS";
-            case IN_PROGRESS -> "PLAYING";
-            case FINISHED -> "FINISHED";
-            default -> gameState.name();
-        };
-    }
 
     private Player getOpponent(Game game, Player player) {
-        if (game.getPlayer1().equals(player)) {
+        if (player == null) return null;
+
+        if (player.equals(game.getPlayer1())) {
             return game.getPlayer2();
-        } else {
-            return game.getPlayer1();
         }
+        return game.getPlayer1();
     }
 
-    private Player getPlayerById(Game game, String playerId) {
-        if (game.getPlayer1() != null && playerId != null && playerId.equals(game.getPlayer1().getName())) {
+    private Player getPlayerByName(Game game, String playerName) {
+        if (playerName == null) return null;
+
+        if (game.getPlayer1() != null &&
+                playerName.equals(game.getPlayer1().getName())) {
             return game.getPlayer1();
         }
-        if (game.getPlayer2() != null && playerId != null && playerId.equals(game.getPlayer2().getName())) {
+
+        if (game.getPlayer2() != null &&
+                playerName.equals(game.getPlayer2().getName())) {
             return game.getPlayer2();
         }
+
         return null;
     }
 
-    private List<ShipResponse> toShipResponses(List<Ship> ships) {
-        List<ShipResponse> responses = new ArrayList<>();
 
-        for (Ship ship : ships) {
-            ShipResponse response = new ShipResponse();
-            response.setType(ship.getName());
-            response.setSize(ship.getSize());
-            response.setHits(ship.getHits());
-            ship.setDestroyed(response.isDestroyed());
-            responses.add(response);
-        }
-
-        return responses;
-    }
 
 }

@@ -1,7 +1,6 @@
 package com.example.battleship.service;
 
 import com.example.battleship.domain.game.Game;
-import com.example.battleship.domain.game.GameState;
 import com.example.battleship.domain.game.Player;
 import com.example.battleship.domain.map.AttackResult;
 import com.example.battleship.exception.InvalidMoveException;
@@ -34,9 +33,7 @@ class GameServiceImplTest {
     @BeforeEach
     void setup() {
         Player p1 = new Player("player1");
-        Player p2 = new Player("player2");
-
-        game = new Game(p1, null);
+        game = new Game(p1);
     }
 
     // =========================
@@ -64,37 +61,19 @@ class GameServiceImplTest {
 
         Game result = gameService.joinGame("1", "player2");
 
-        assertNotNull(result.getPlayer2());
-        assertEquals("player2", result.getPlayer2().getName());
+        assertNotNull(result);
+        assertEquals("player2", result.findPlayer("player2").getName());
         verify(gameRepository).save(game);
     }
 
     @Test
     void shouldThrowWhenGameFull() {
 
-        game.setPlayer2(new Player("existing"));
+        game.addPlayer2(new Player("existing"));
 
         when(gameRepository.findById("1")).thenReturn(Optional.of(game));
 
-        assertThrows(InvalidMoveException.class,
-                () -> gameService.joinGame("1", "player2"));
-    }
-
-    // =========================
-    // startGame
-    // =========================
-
-    @Test
-    void shouldStartGame() {
-
-        game.setPlayer2(new Player("player2"));
-
-        when(gameRepository.findById("1")).thenReturn(Optional.of(game));
-
-        Game result = gameService.startGame("1");
-
-        assertEquals(GameState.IN_PROGRESS, result.getState());
-        verify(gameRepository).save(game);
+        assertThrows(InvalidMoveException.class, () -> gameService.joinGame("1", "player2"));
     }
 
     // =========================
@@ -106,15 +85,10 @@ class GameServiceImplTest {
 
         when(gameRepository.findById("1")).thenReturn(Optional.of(game));
 
-        Game result = gameService.placeShip(
-                "1",
-                "player1",
-                "Destroyer",
-                2,
-                0,
-                0,
-                "HORIZONTAL"
-        );
+        // require two players to be in PLACING_SHIPS phase
+        game.addPlayer2(new Player("player2"));
+
+        Game result = gameService.placeShip("1", "player1", "Destroyer", 2, 0, 0, "HORIZONTAL");
 
         assertNotNull(result);
         verify(gameRepository).save(game);
@@ -127,17 +101,26 @@ class GameServiceImplTest {
     @Test
     void shouldAttack() {
 
-        Player p2 = new Player("player2");
-        game.setPlayer2(p2);
-        game.start();
-
+        // Prepare game with both players and placed ships
+        game.addPlayer2(new Player("player2"));
         when(gameRepository.findById("1")).thenReturn(Optional.of(game));
 
-        AttackResult result =
-                gameService.attack("1", "player1", 0, 0);
+        // Place required ships for both players via service so hasRequiredShipsPlaced becomes true
+        for (int i = 0; i < 4; i++) {
+            int x1 = i * 2; // space ships to avoid overlap and stay within board
+            int x2 = i * 2;
+            gameService.placeShip("1", "player1", "S" + i, 2, x1, 0, "HORIZONTAL");
+            gameService.placeShip("1", "player2", "S" + i, 2, x2, 2, "HORIZONTAL");
+        }
+
+        // Confirm placement through service (moves game to IN_PROGRESS)
+        gameService.confirmPlayerReady("1", "player1");
+        gameService.confirmPlayerReady("1", "player2");
+
+        AttackResult result = gameService.attack("1", "player1", 0, 0);
 
         assertNotNull(result);
-        verify(gameRepository).save(game);
+        verify(gameRepository, atLeastOnce()).save(game);
     }
 
     // =========================

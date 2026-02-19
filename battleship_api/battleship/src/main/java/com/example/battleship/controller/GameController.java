@@ -16,8 +16,9 @@ public class GameController {
     private final GameService gameService;
     private final GameMapper gameMapper;
 
-    public GameController(GameService gameApplicationService, GameMapper gameMapper) {
-        this.gameService = gameApplicationService;
+    public GameController(GameService gameService,
+                          GameMapper gameMapper) {
+        this.gameService = gameService;
         this.gameMapper = gameMapper;
     }
 
@@ -32,35 +33,40 @@ public class GameController {
 
         response.setGameId(game.getId());
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.status(201).body(response);
     }
-
-
 
     @GetMapping("/{gameId}")
     public ResponseEntity<GameStateResponse> getGame(
             @PathVariable String gameId,
-            @RequestParam String playerId) {
+            @RequestParam String playerName) {
 
         Game game = gameService.getGameState(gameId);
 
-        GameStateResponse response = gameMapper.toGameStateResponse(game, playerId);
+        // valida se pertence ao jogo
+        game.findPlayer(playerName);
+
+        GameStateResponse response =
+                gameMapper.toGameStateResponse(game, playerName);
 
         response.setGameId(gameId);
 
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/join")
-    public ResponseEntity<GameStateResponse> joinGameByCode(
+    @PostMapping("/{gameId}/join")
+    public ResponseEntity<GameStateResponse> joinGame(
+            @PathVariable String gameId,
             @RequestBody JoinGameRequest request) {
 
-        Game game = gameService.joinGame(request.getGameId(), request.getPlayerName());
+        Game game = gameService.joinGame(gameId, request.getPlayerName());
 
-        GameStateResponse response = gameMapper.toGameStateResponse(game, request.getPlayerName());
+        GameStateResponse response =
+                gameMapper.toGameStateResponse(game, request.getPlayerName());
 
         response.setGameId(game.getId());
 
         return ResponseEntity.ok(response);
     }
+
 }

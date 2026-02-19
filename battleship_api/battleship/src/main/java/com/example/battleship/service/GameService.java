@@ -10,20 +10,12 @@ public interface GameService {
     /**
      * Cria um novo jogo e adiciona o primeiro jogador
      * 
-     * @param playerName Nome do jogador que está criando o jogo
+     * @param playerName Nome do jogador que está a criar o jogo
      *                   
      * @return O estado inicial do jogo criado, incluindo o jogador que criou o jogo e
      */
     Game createGame(String playerName);
 
-    /**
-     * Inicia o jogo (muda estado de WAITING para IN_PROGRESS)
-     * 
-     * @param gameId ID do jogo a ser iniciado
-     * 
-     * @return O estado atualizado do jogo após iniciar
-     */
-    Game startGame(String gameId);
 
     /**
      * Posiciona um navio no tabuleiro do jogador
@@ -99,7 +91,7 @@ public interface GameService {
      * @param playerId ID do jogador
      * @return true se ambos os jogadores estiverem prontos e o jogo pode ser iniciado, false caso contrário
      */
-    boolean markPlayerReady(String gameId, String playerId);
+    boolean confirmPlayerReady(String gameId, String playerId);
     
     /**
      * Obtém o nome do jogador que tem a vez atual de jogar

@@ -1,16 +1,16 @@
 package com.example.battleship.domain.game;
 
 import com.example.battleship.domain.map.Board;
+import com.example.battleship.domain.map.Coordinate;
+import com.example.battleship.domain.map.Orientation;
 import com.example.battleship.domain.map.Ship;
-
-import java.util.List;
+import com.example.battleship.exception.InvalidMoveException;
 
 public class Player {
 
     private final String name;
     private final Board board;
-    private List<Ship> ships;
-    private boolean hasLost;
+    private boolean shipsPlaced = false;
 
     public Player(String name) {
         if (name == null || name.isBlank()) {
@@ -18,27 +18,40 @@ public class Player {
         }
         this.name = name;
         this.board = new Board(10, 10);
-        this.ships = List.of();
-        this.hasLost = false;
     }
+
+    /* =============================
+       SHIP PLACEMENT
+       ============================= */
+
+    public void placeShip(Ship ship, Coordinate coordinate, Orientation orientation) {
+
+        if (shipsPlaced) {
+            throw new InvalidMoveException("Ships already placed");
+        }
+
+        board.placeShip(ship, coordinate, orientation);
+    }
+
+    public void confirmShipsPlacement() {
+
+        if (!board.hasRequiredShipsPlaced()) {
+            throw new InvalidMoveException("Not all required ships were placed");
+        }
+
+        this.shipsPlaced = true;
+    }
+
+    public boolean hasPlacedShips() {
+        return shipsPlaced;
+    }
+
+    /* =============================
+       GAME STATUS
+       ============================= */
 
     public boolean hasLost() {
-        return hasLost;
-    }
-
-    public void loseAllShips() {
-        this.hasLost = true;
-        for (Ship ship : ships) {
-            ship.setHits(ship.getSize());
-        }
-    }
-
-    public List<Ship> getShips() {
-        return ships;
-    }
-
-    public void setShips(List<Ship> ships) {
-        this.ships = ships;
+        return board.allShipsDestroyed();
     }
 
     public Board getBoard() {
@@ -46,11 +59,6 @@ public class Player {
     }
 
     public String getName() {
-        return this.name;
-    }
-
-    public int getAliveShipsCount() {
-        if (ships == null) return 0;
-        return (int) ships.stream().filter(ship -> ship.getHits() < ship.getSize()).count();
+        return name;
     }
 }

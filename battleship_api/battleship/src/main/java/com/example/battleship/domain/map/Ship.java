@@ -2,37 +2,27 @@ package com.example.battleship.domain.map;
 
 public class Ship {
 
-    private String name;
+    private final String name;
     private final int size;
     private int hits = 0;
-    private boolean destroyed = false;
-
 
     public Ship(String name, int size) {
+        if (size <= 0) {
+            throw new IllegalArgumentException("Ship size must be greater than zero");
+        }
         this.name = name;
         this.size = size;
     }
 
-    public Ship(int size) {
-        this.size = size;
-    }
-
-    public void hit(){
-        if (destroyed) return;
-
-        hits++;
-
-        if (hits == size) {
-            destroyed = true;
+    public void hit() {
+        if (isDestroyed()) {
+            return;
         }
+        hits++;
     }
 
-    boolean isDestroyed(){
-        return  destroyed;
-    }
-
-    public void setDestroyed(boolean destroyed) {
-        this.destroyed = destroyed;
+    public boolean isDestroyed() {
+        return hits >= size;
     }
 
     public int getSize() {
@@ -46,9 +36,4 @@ public class Ship {
     public int getHits() {
         return hits;
     }
-
-    public void setHits(int hits) {
-        this.hits = hits;
-    }
-
 }

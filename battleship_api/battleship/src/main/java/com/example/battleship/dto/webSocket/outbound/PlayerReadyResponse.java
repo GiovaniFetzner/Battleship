@@ -2,7 +2,7 @@ package com.example.battleship.dto.webSocket.outbound;
 
 public class PlayerReadyResponse extends GameEvent {
 
-    private final String playerId;
+    private final String playerName;
     private final boolean bothReady;
 
     public PlayerReadyResponse(String gameId,
@@ -10,12 +10,12 @@ public class PlayerReadyResponse extends GameEvent {
                                boolean bothReady) {
 
         super(GameEventType.PLAYER_READY, gameId);
-        this.playerId = playerId;
+        this.playerName = playerId;
         this.bothReady = bothReady;
     }
 
-    public String getPlayerId() {
-        return playerId;
+    public String getPlayerName() {
+        return playerName;
     }
 
     public boolean isBothReady() {

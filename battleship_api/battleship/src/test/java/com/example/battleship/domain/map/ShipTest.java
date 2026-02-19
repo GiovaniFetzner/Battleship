@@ -9,7 +9,7 @@ class ShipTest {
 
     @Test
     void shouldBeDestroyedAfterAllHits() {
-        Ship ship = new Ship(2);
+        Ship ship = new Ship("Battleship", 2);
 
         ship.hit();
         assertFalse(ship.isDestroyed());
@@ -18,4 +18,3 @@ class ShipTest {
         assertTrue(ship.isDestroyed());
     }
 }
-

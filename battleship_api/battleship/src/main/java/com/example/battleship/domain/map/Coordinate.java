@@ -1,20 +1,12 @@
 package com.example.battleship.domain.map;
 
-public class Coordinate {
+public record Coordinate(int x, int y) {
 
-    private final int x;
-    private final int y;
-
-    public Coordinate(int x, int y) {
-        this.x = x;
-        this.y = y;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Coordinate that)) return false;
+        return x == that.x && y == that.y;
     }
 
-    public int getX() {
-        return x;
-    }
-
-    public int getY() {
-        return y;
-    }
 }

@@ -154,7 +154,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                         message.getPlayerId()
                 );
 
-        broadcastToGame(message.getGameId(), response);
+        sendToPlayer(
+                message.getGameId(),
+                message.getPlayerId(),
+                response
+        );
 
     }
 
@@ -164,7 +168,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         registerSession(message.getGameId(), message.getPlayerId(), session);
 
         boolean bothReady =
-                gameService.markPlayerReady(
+                gameService.confirmPlayerReady(
                         message.getGameId(),
                         message.getPlayerId()
                 );
@@ -192,6 +196,21 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             broadcastToGame(message.getGameId(), startResponse);
         }
     }
+
+    private void sendToPlayer(String gameId, String playerName, GameEvent event) throws Exception {
+
+        Map<String, WebSocketSession> gameSessionMap = gameSessions.get(gameId);
+
+        if (gameSessionMap == null) return;
+
+        WebSocketSession ws = gameSessionMap.get(playerName);
+
+        if (ws != null) {
+            String json = objectMapper.writeValueAsString(event);
+            ws.sendMessage(new TextMessage(json));
+        }
+    }
+
 
     private void broadcastToGame(String gameId, GameEvent event) throws Exception {
 

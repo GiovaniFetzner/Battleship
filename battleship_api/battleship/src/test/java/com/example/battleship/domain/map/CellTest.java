@@ -33,7 +33,7 @@ class CellTest {
     @Test
     void shouldReturnHitWhenAttackingCellWithShip() {
         Cell cell = new Cell();
-        Ship ship = new Ship(1);
+        Ship ship = new Ship("Destroyer", 1);
 
         cell.placeShip(ship);
 
