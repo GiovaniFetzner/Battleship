@@ -14,7 +14,7 @@ public class GameMessage {
 
     private GameMessageType type;
     private String gameId;
-    private String playerId;
+    private String playerName;
 
     // ===== ATTACK =====
     private Integer x;
@@ -44,12 +44,12 @@ public class GameMessage {
         this.gameId = gameId;
     }
 
-    public String getPlayerId() {
-        return playerId;
+    public String getPlayerName() {
+        return playerName;
     }
 
-    public void setPlayerId(String playerId) {
-        this.playerId = playerId;
+    public void setPlayerName(String playerName) {
+        this.playerName = playerName;
     }
 
     public Integer getX() {

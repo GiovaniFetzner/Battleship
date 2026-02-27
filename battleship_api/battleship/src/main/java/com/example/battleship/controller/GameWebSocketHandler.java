@@ -1,6 +1,7 @@
 package com.example.battleship.controller;
 
 import com.example.battleship.domain.map.AttackResult;
+import com.example.battleship.webSocket.GameEventBroadcasterImpl;
 import com.example.battleship.dto.webSocket.inbound.GameMessage;
 import com.example.battleship.dto.webSocket.outbound.*;
 import com.example.battleship.service.GameService;
@@ -11,93 +12,104 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private final GameService gameService;
     private final ObjectMapper objectMapper;
-    private final Map<String, Map<String, WebSocketSession>> gameSessions =
-            new ConcurrentHashMap<>();
+    private final GameEventBroadcasterImpl broadcaster;
 
-
-    public GameWebSocketHandler(GameService gameService, ObjectMapper objectMapper) {
+    public GameWebSocketHandler(GameService gameService,
+                                ObjectMapper objectMapper,
+                                GameEventBroadcasterImpl broadcaster) {
         this.gameService = gameService;
         this.objectMapper = objectMapper;
+        this.broadcaster = broadcaster;
     }
 
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) {
-        System.out.println("Player connected: " + session.getId());
-    }
+    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
 
-    private void registerSession(String gameId, String playerName, WebSocketSession session) {
+        String query = session.getUri().getQuery();
+        String gameId = null;
+        String playerName = null;
 
-        gameSessions
-                .computeIfAbsent(gameId, g -> new ConcurrentHashMap<>())
-                .put(playerName, session);
+        if (query != null) {
+            String[] params = query.split("&");
+            for (String param : params) {
+                String[] keyValue = param.split("=");
+                if (keyValue.length == 2) {
+                    if (keyValue[0].equals("gameId")) {
+                        gameId = keyValue[1];
+                    } else if (keyValue[0].equals("playerName")) {
+                        playerName = keyValue[1];
+                    }
+                }
+            }
+        }
+
+        if (gameId == null || playerName == null) {
+            session.close();
+            return;
+        }
+
+        broadcaster.register(gameId, playerName, session);
+
+        System.out.println("Registrado via conexão:");
+        System.out.println("gameId=" + gameId);
+        System.out.println("playerName=" + playerName);
+        System.out.println("sessionId=" + session.getId());
     }
 
 
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+    protected void handleTextMessage(WebSocketSession session,
+                                     TextMessage message) throws Exception {
 
         GameMessage baseMessage = null;
 
         try {
 
-            baseMessage =
-                    objectMapper.readValue(message.getPayload(), GameMessage.class);
+            baseMessage = objectMapper.readValue(
+                    message.getPayload(),
+                    GameMessage.class
+            );
 
             if (baseMessage.getType() == null) {
                 throw new IllegalArgumentException("Message type is required");
             }
 
+            broadcaster.register(
+                    baseMessage.getGameId(),
+                    baseMessage.getPlayerName(),
+                    session
+            );
+
             switch (baseMessage.getType()) {
 
-                case ATTACK:
-                    handleAttack(session, baseMessage);
-                    break;
+                case ATTACK -> handleAttack(baseMessage);
 
-                case PLACE_SHIP:
-                    handlePlaceShip(session, baseMessage);
-                    break;
+                case PLACE_SHIP -> handlePlaceShip(baseMessage);
 
-                case PLAYER_READY:
-                    handlePlayerReady(session, baseMessage);
-                    break;
+                case PLAYER_READY -> handlePlayerReady(baseMessage);
 
-                default:
-                    throw new IllegalArgumentException("Unknown message type");
+                default -> throw new IllegalArgumentException("Unknown message type");
             }
 
         } catch (Exception e) {
 
             String gameId = baseMessage != null ? baseMessage.getGameId() : null;
 
-            sendError(session, gameId, e.getMessage());
+            ErrorResponse error =
+                    new ErrorResponse(gameId, e.getMessage());
+
+            session.sendMessage(
+                    new TextMessage(objectMapper.writeValueAsString(error))
+            );
         }
     }
 
-    private void sendError(WebSocketSession session,
-                           String gameId,
-                           String errorMessage) throws Exception {
-
-        ErrorResponse error =
-                new ErrorResponse(gameId, errorMessage);
-
-        String json = objectMapper.writeValueAsString(error);
-
-        session.sendMessage(new TextMessage(json));
-    }
-
-
-
-    private void handleAttack(WebSocketSession session, GameMessage message) throws Exception {
-
-        registerSession(message.getGameId(), message.getPlayerId(), session);
+    private void handleAttack(GameMessage message) throws Exception {
 
         if (message.getX() == null || message.getY() == null) {
             throw new IllegalArgumentException("Coordinates are required for ATTACK");
@@ -106,7 +118,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         AttackResult result =
                 gameService.attack(
                         message.getGameId(),
-                        message.getPlayerId(),
+                        message.getPlayerName(),
                         message.getX(),
                         message.getY()
                 );
@@ -122,12 +134,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                         gameService.getWinner(message.getGameId())
                 );
 
-        broadcastToGame(message.getGameId(), response);
+        broadcaster.broadcast(message.getGameId(), response);
     }
 
-    private void handlePlaceShip(WebSocketSession session, GameMessage message) throws Exception {
-
-        registerSession(message.getGameId(), message.getPlayerId(), session);
+    private void handlePlaceShip(GameMessage message) throws Exception {
 
         if (message.getShipType() == null ||
                 message.getSize() == null ||
@@ -140,7 +150,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
         gameService.placeShip(
                 message.getGameId(),
-                message.getPlayerId(),
+                message.getPlayerName(),
                 message.getShipType(),
                 message.getSize(),
                 message.getX(),
@@ -151,36 +161,28 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         ShipPlacedResponse response =
                 new ShipPlacedResponse(
                         message.getGameId(),
-                        message.getPlayerId()
+                        message.getPlayerName()
                 );
 
-        sendToPlayer(
-                message.getGameId(),
-                message.getPlayerId(),
-                response
-        );
-
+        broadcaster.broadcast(message.getGameId(), response);
     }
 
-
-    private void handlePlayerReady(WebSocketSession session, GameMessage message) throws Exception {
-
-        registerSession(message.getGameId(), message.getPlayerId(), session);
+    private void handlePlayerReady(GameMessage message) throws Exception {
 
         boolean bothReady =
                 gameService.confirmPlayerReady(
                         message.getGameId(),
-                        message.getPlayerId()
+                        message.getPlayerName()
                 );
 
         PlayerReadyResponse response =
                 new PlayerReadyResponse(
                         message.getGameId(),
-                        message.getPlayerId(),
+                        message.getPlayerName(),
                         bothReady
                 );
 
-        broadcastToGame(message.getGameId(), response);
+        broadcaster.broadcast(message.getGameId(), response);
 
         if (bothReady) {
 
@@ -193,48 +195,16 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                             firstPlayer
                     );
 
-            broadcastToGame(message.getGameId(), startResponse);
+            broadcaster.broadcast(message.getGameId(), startResponse);
         }
     }
-
-    private void sendToPlayer(String gameId, String playerName, GameEvent event) throws Exception {
-
-        Map<String, WebSocketSession> gameSessionMap = gameSessions.get(gameId);
-
-        if (gameSessionMap == null) return;
-
-        WebSocketSession ws = gameSessionMap.get(playerName);
-
-        if (ws != null) {
-            String json = objectMapper.writeValueAsString(event);
-            ws.sendMessage(new TextMessage(json));
-        }
-    }
-
-
-    private void broadcastToGame(String gameId, GameEvent event) throws Exception {
-
-        Map<String, WebSocketSession> gameSessionMap =
-                gameSessions.get(gameId);
-
-        if (gameSessionMap == null) return;
-
-        String json = objectMapper.writeValueAsString(event);
-
-        for (WebSocketSession ws : gameSessionMap.values()) {
-            ws.sendMessage(new TextMessage(json));
-        }
-    }
-
 
     @Override
-    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+    public void afterConnectionClosed(WebSocketSession session,
+                                      CloseStatus status) {
 
-        gameSessions.values().forEach(playerMap ->
-                playerMap.values().removeIf(ws -> ws.getId().equals(session.getId()))
-        );
+        broadcaster.removeSession(session);
 
         System.out.println("Player disconnected: " + session.getId());
     }
-
 }

@@ -4,8 +4,10 @@ import com.example.battleship.domain.game.Game;
 import com.example.battleship.dto.rest.inbound.CreateGameRequest;
 import com.example.battleship.dto.rest.inbound.JoinGameRequest;
 import com.example.battleship.dto.rest.outbound.GameStateResponse;
+import com.example.battleship.dto.webSocket.outbound.GameStateUpdatedResponse;
 import com.example.battleship.mapper.GameMapper;
 import com.example.battleship.service.GameService;
+import com.example.battleship.webSocket.GameEventBroadcaster;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,11 +17,14 @@ public class GameController {
 
     private final GameService gameService;
     private final GameMapper gameMapper;
+    private final GameEventBroadcaster broadcaster;
+
 
     public GameController(GameService gameService,
-                          GameMapper gameMapper) {
+                          GameMapper gameMapper, GameEventBroadcaster broadcaster) {
         this.gameService = gameService;
         this.gameMapper = gameMapper;
+        this.broadcaster = broadcaster;
     }
 
     @PostMapping
@@ -65,6 +70,12 @@ public class GameController {
                 gameMapper.toGameStateResponse(game, request.getPlayerName());
 
         response.setGameId(game.getId());
+
+        broadcaster.broadcast(gameId,
+                new GameStateUpdatedResponse(gameId, request.getPlayerName()));
+        System.out.println("JOIN disparando GAME_STATE_UPDATED para gameId=" + gameId + " playerName=" + request.getPlayerName());
+
+
 
         return ResponseEntity.ok(response);
     }
