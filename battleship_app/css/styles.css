@@ -19,9 +19,12 @@ body {
     color: var(--ink);
     background: radial-gradient(1200px 700px at 20% 10%, #22304a 0%, transparent 60%),
         linear-gradient(140deg, var(--bg-1), var(--bg-2));
-    display: grid;
-    place-items: center;
-    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px 12px;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .bg-shapes {
