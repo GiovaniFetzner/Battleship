@@ -447,6 +447,7 @@ button:hover {
     display: grid;
     gap: 12px;
     justify-items: start;
+    touch-action: pan-y;
 }
 
 .ships-control-btn {
@@ -477,6 +478,7 @@ button:hover {
     display: block;
     transform-origin: center;
     transition: transform 0.15s ease;
+    touch-action: pan-y;
 }
 
 .ship-img[data-orientation="vertical"] {

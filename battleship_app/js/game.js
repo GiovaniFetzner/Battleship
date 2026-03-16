@@ -1,4 +1,4 @@
-// Rotação dos navios na área de drag and drop
+// Seleção e rotação dos navios na área de posicionamento
 document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll(".rotate-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
@@ -13,13 +13,12 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll(".ship-img").forEach(shipImg => {
         cacheShipPreviewSize(shipImg);
         applyShipOrientation(shipImg, shipImg.getAttribute("data-orientation") || "horizontal");
+        shipImg.dataset.placed = "false";
     });
 });
 const board = document.getElementById("board");
 const shipsArea = document.getElementById("shipsArea");
 const rotateSelectedShipButton = document.getElementById("rotateSelectedShip");
-// Drag and Drop dos navios
-let draggedShip = null;
 let selectedShip = null;
 const SHIP_SIZES = {
     porta_avioes: 5,
@@ -30,6 +29,10 @@ const SHIP_SIZES = {
 const occupiedCells = new Set();
 const placedShips = new Map();
 
+function isShipAvailable(shipElement) {
+    return shipElement?.dataset.placed !== "true";
+}
+
 if (shipsArea) {
     shipsArea.addEventListener("click", event => {
         const target = event.target;
@@ -38,34 +41,24 @@ if (shipsArea) {
         }
 
         const ship = target.closest(".ship-img");
-        if (!ship || ship.getAttribute("draggable") === "false") {
+        if (!ship || !isShipAvailable(ship)) {
             return;
         }
 
         selectShip(ship);
-    });
-
-    shipsArea.addEventListener("dragstart", (e) => {
-        if (e.target.classList.contains("ship-img")) {
-            draggedShip = e.target;
-            selectShip(e.target);
-        }
-    });
-    shipsArea.addEventListener("dragend", () => {
-        draggedShip = null;
     });
 }
 
 if (rotateSelectedShipButton) {
     rotateSelectedShipButton.addEventListener("click", () => {
         if (!selectedShip) {
-            const firstAvailable = shipsArea?.querySelector('.ship-img[draggable="true"]');
+            const firstAvailable = shipsArea?.querySelector('.ship-img[data-placed="false"]');
             if (firstAvailable instanceof HTMLElement) {
                 selectShip(firstAvailable);
             }
         }
 
-        if (!selectedShip) {
+        if (!selectedShip || !isShipAvailable(selectedShip)) {
             return;
         }
 
@@ -131,84 +124,83 @@ function applyShipOrientation(shipElement, orientation) {
     }
 }
 
-if (board) {
-    board.addEventListener("dragover", (e) => {
-        e.preventDefault();
+function placeShipOnBoard(shipElement, cell) {
+    if (!board || !shipElement || !cell) {
+        return false;
+    }
+
+    const shipType = shipElement.getAttribute("data-ship");
+    if (!shipType || placedShips.has(shipType)) {
+        return false;
+    }
+
+    const orientation = shipElement.getAttribute("data-orientation") || "horizontal";
+    const size = SHIP_SIZES[shipType] || 1;
+    const startRow = Number(cell.dataset.row);
+    const startCol = Number(cell.dataset.col);
+    const targetCells = getTargetCells(startRow, startCol, size, orientation);
+
+    if (!targetCells || hasCollision(targetCells)) {
+        return false;
+    }
+
+    const firstCell = getBoardCell(targetCells[0].row, targetCells[0].col);
+    const lastCell = getBoardCell(
+        targetCells[targetCells.length - 1].row,
+        targetCells[targetCells.length - 1].col
+    );
+
+    if (!firstCell || !lastCell) {
+        return false;
+    }
+
+    const boardRect = board.getBoundingClientRect();
+    const firstRect = firstCell.getBoundingClientRect();
+    const lastRect = lastCell.getBoundingClientRect();
+
+    const overlay = document.createElement("div");
+    overlay.className = `board-ship board-ship--${orientation}`;
+    overlay.setAttribute("data-ship", shipType);
+    overlay.style.left = `${firstRect.left - boardRect.left}px`;
+    overlay.style.top = `${firstRect.top - boardRect.top}px`;
+    const overlayWidth = lastRect.right - firstRect.left;
+    const overlayHeight = lastRect.bottom - firstRect.top;
+
+    overlay.style.width = `${overlayWidth}px`;
+    overlay.style.height = `${overlayHeight}px`;
+
+    const shipImage = document.createElement("img");
+    shipImage.className = "board-ship-image";
+    shipImage.src = shipElement.getAttribute("src") || "";
+    shipImage.alt = "";
+    shipImage.setAttribute("aria-hidden", "true");
+    shipImage.draggable = false;
+    if (orientation === "vertical") {
+        shipImage.classList.add("board-ship-image--vertical");
+        shipImage.style.width = `${overlayHeight}px`;
+        shipImage.style.height = `${overlayWidth}px`;
+    }
+    overlay.appendChild(shipImage);
+
+    board.appendChild(overlay);
+
+    targetCells.forEach(targetCell => {
+        occupiedCells.add(cellKey(targetCell.row, targetCell.col));
+        const segment = getBoardCell(targetCell.row, targetCell.col);
+        if (segment) {
+            segment.classList.add("has-ship");
+        }
     });
-    board.addEventListener("drop", (e) => {
-        e.preventDefault();
-        if (!draggedShip) return;
-        const cell = e.target.closest(".board-cell");
-        if (!cell) return;
-        const shipType = draggedShip.getAttribute("data-ship");
-        if (!shipType || placedShips.has(shipType)) {
-            return;
-        }
 
-        const orientation = draggedShip.getAttribute("data-orientation") || "horizontal";
-        const size = SHIP_SIZES[shipType] || 1;
-        const startRow = Number(cell.dataset.row);
-        const startCol = Number(cell.dataset.col);
-        const targetCells = getTargetCells(startRow, startCol, size, orientation);
+    placedShips.set(shipType, targetCells);
+    shipElement.dataset.placed = "true";
+    shipElement.style.opacity = 0.5;
+    shipElement.classList.remove("ship-img--selected");
+    if (selectedShip === shipElement) {
+        selectedShip = null;
+    }
 
-        if (!targetCells || hasCollision(targetCells)) {
-            return;
-        }
-
-        const firstCell = getBoardCell(targetCells[0].row, targetCells[0].col);
-        const lastCell = getBoardCell(
-            targetCells[targetCells.length - 1].row,
-            targetCells[targetCells.length - 1].col
-        );
-
-        if (!firstCell || !lastCell) {
-            return;
-        }
-
-        const boardRect = board.getBoundingClientRect();
-        const firstRect = firstCell.getBoundingClientRect();
-        const lastRect = lastCell.getBoundingClientRect();
-
-        const overlay = document.createElement("div");
-        overlay.className = `board-ship board-ship--${orientation}`;
-        overlay.setAttribute("data-ship", shipType);
-        overlay.style.left = `${firstRect.left - boardRect.left}px`;
-        overlay.style.top = `${firstRect.top - boardRect.top}px`;
-        const overlayWidth = lastRect.right - firstRect.left;
-        const overlayHeight = lastRect.bottom - firstRect.top;
-
-        overlay.style.width = `${overlayWidth}px`;
-        overlay.style.height = `${overlayHeight}px`;
-
-        const shipImage = document.createElement("img");
-        shipImage.className = "board-ship-image";
-        shipImage.src = draggedShip.getAttribute("src") || "";
-        shipImage.alt = "";
-        shipImage.setAttribute("aria-hidden", "true");
-        shipImage.draggable = false;
-        if (orientation === "vertical") {
-            shipImage.classList.add("board-ship-image--vertical");
-            shipImage.style.width = `${overlayHeight}px`;
-            shipImage.style.height = `${overlayWidth}px`;
-        }
-        overlay.appendChild(shipImage);
-
-        board.appendChild(overlay);
-
-        targetCells.forEach(targetCell => {
-            occupiedCells.add(cellKey(targetCell.row, targetCell.col));
-            const segment = getBoardCell(targetCell.row, targetCell.col);
-            if (segment) {
-                segment.classList.add("has-ship");
-            }
-        });
-
-        placedShips.set(shipType, targetCells);
-
-        // Marca navio como usado
-        draggedShip.style.opacity = 0.5;
-        draggedShip.setAttribute("draggable", false);
-    });
+    return true;
 }
 
 function cellKey(row, col) {
@@ -444,6 +436,13 @@ if (board) {
         if (!target.classList.contains("board-cell")) {
             return;
         }
+
+        if (selectedShip && isShipAvailable(selectedShip)) {
+            if (placeShipOnBoard(selectedShip, target)) {
+                return;
+            }
+        }
+
         target.classList.toggle("is-selected");
     });
 }
