@@ -28,8 +28,27 @@ const SHIP_SIZES = {
     submarino: 3,
     lancha: 2
 };
+const SHIP_LABELS = {
+    porta_avioes: "Porta-avioes",
+    bombardeiro: "Bombardeiro",
+    submarino: "Submarino",
+    lancha: "Lancha"
+};
 const occupiedCells = new Set();
 const placedShips = new Map();
+const localShipsState = new Map();
+
+Object.entries(SHIP_SIZES).forEach(([shipType, size]) => {
+    localShipsState.set(shipType, {
+        key: shipType,
+        name: SHIP_LABELS[shipType] || shipType,
+        size,
+        hits: 0,
+        destroyed: false,
+        placed: false,
+        cells: []
+    });
+});
 
 function isShipAvailable(shipElement) {
     return shipElement?.dataset.placed !== "true";
@@ -213,6 +232,8 @@ function placeShipOnBoard(shipElement, cell) {
     });
 
     placedShips.set(shipType, targetCells);
+    updateLocalShipPlacement(shipType, targetCells);
+    persistLocalShipsState();
     shipElement.dataset.placed = "true";
     shipElement.style.opacity = 0.5;
     shipElement.classList.remove("ship-img--selected");
@@ -253,6 +274,8 @@ function removePlacedShip(shipType) {
     });
 
     placedShips.delete(shipType);
+    updateLocalShipPlacement(shipType, []);
+    persistLocalShipsState();
 
     const shipElement = shipsArea?.querySelector(`.ship-img[data-ship="${shipType}"]`);
     if (shipElement instanceof HTMLElement) {
@@ -292,6 +315,158 @@ function getTargetCells(startRow, startCol, size, orientation) {
 function hasCollision(cells) {
     return cells.some(({ row, col }) => occupiedCells.has(cellKey(row, col)));
 }
+
+function toStoredCells(cells) {
+    return Array.isArray(cells)
+        ? cells
+            .map(cell => ({ row: Number(cell.row), col: Number(cell.col) }))
+            .filter(cell => Number.isInteger(cell.row) && Number.isInteger(cell.col))
+        : [];
+}
+
+function updateLocalShipPlacement(shipType, cells) {
+    const ship = localShipsState.get(shipType);
+    if (!ship) {
+        return;
+    }
+
+    const normalizedCells = toStoredCells(cells);
+    ship.cells = normalizedCells;
+    ship.placed = normalizedCells.length > 0;
+    ship.hits = 0;
+    ship.destroyed = false;
+}
+
+function getLocalShipsStorageKey() {
+    return `localShipsState:${gameId}:${playerName}`;
+}
+
+function persistLocalShipsState() {
+    const payload = Array.from(localShipsState.values());
+    sessionStorage.setItem(getLocalShipsStorageKey(), JSON.stringify(payload));
+}
+
+function hydrateLocalShipsState() {
+    const raw = sessionStorage.getItem(getLocalShipsStorageKey());
+    if (!raw) {
+        return;
+    }
+
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) {
+            return;
+        }
+
+        parsed.forEach(item => {
+            if (!item || typeof item !== "object") {
+                return;
+            }
+
+            const key = typeof item.key === "string" ? item.key : null;
+            if (!key || !localShipsState.has(key)) {
+                return;
+            }
+
+            const ship = localShipsState.get(key);
+            const cells = toStoredCells(item.cells);
+            ship.cells = cells;
+            ship.placed = cells.length > 0;
+            ship.hits = Math.max(0, Math.min(Number(item.hits) || 0, ship.size));
+            ship.destroyed = ship.hits >= ship.size || item.destroyed === true;
+        });
+    } catch (error) {
+        console.error("Falha ao restaurar estado local de navios:", error);
+    }
+}
+
+function applyAttackToLocalShips(eventData) {
+    if (!eventData || (eventData.type !== "ATTACK_RESULT" && eventData.type !== "attack_result")) {
+        return;
+    }
+
+    const wasAttackOnMyBoard =
+        eventData.currentPlayer === playerName ||
+        (eventData.gameOver === true && eventData.winner && eventData.winner !== playerName);
+    if (!wasAttackOnMyBoard) {
+        return;
+    }
+
+    const result = String(eventData.result || "").toUpperCase();
+    if (result !== "HIT" && result !== "DESTROYED") {
+        return;
+    }
+
+    const x = Number(eventData.x);
+    const y = Number(eventData.y);
+    if (!Number.isInteger(x) || !Number.isInteger(y)) {
+        return;
+    }
+
+    for (const ship of localShipsState.values()) {
+        const matchesCell = ship.cells.some(cell => cell.row === x && cell.col === y);
+        if (!matchesCell || ship.destroyed) {
+            continue;
+        }
+
+        ship.hits = Math.min(ship.hits + 1, ship.size);
+        ship.destroyed = ship.hits >= ship.size;
+        persistLocalShipsState();
+        return;
+    }
+}
+
+function buildLocalHudShips() {
+    return Array.from(localShipsState.values()).map(ship => ({
+        name: ship.name,
+        size: ship.size,
+        hits: ship.hits,
+        destroyed: ship.destroyed,
+        placed: ship.placed
+    }));
+}
+
+function getShipsForHud(gameState) {
+    const apiShips = Array.isArray(gameState?.myShips) ? gameState.myShips : [];
+    if (apiShips.length > 0) {
+        return apiShips;
+    }
+
+    return buildLocalHudShips();
+}
+
+function getShipsRemainingForHud(gameState, ships) {
+    if (Array.isArray(gameState?.myShips) && gameState.myShips.length > 0) {
+        return ships.filter(ship => ship?.destroyed !== true).length;
+    }
+
+    if (gameState?.gameStatus === "WAITING_FOR_PLAYERS") {
+        return null;
+    }
+
+    if (gameState?.gameStatus === "PLACING_SHIPS") {
+        return Object.keys(SHIP_SIZES).length;
+    }
+
+    const placedShipsCount = ships.filter(ship => ship?.placed === true).length;
+    if (placedShipsCount === 0) {
+        return null;
+    }
+
+    return ships.filter(ship => ship?.placed === true && ship?.destroyed !== true).length;
+}
+
+function getShipStatusLabel(ship, gameStatus) {
+    if (ship?.destroyed === true) {
+        return "destruido";
+    }
+
+    if (ship?.placed === false && gameStatus === "PLACING_SHIPS") {
+        return "nao posicionado";
+    }
+
+    return "ativo";
+}
 const hudPlayerName = document.getElementById("hudPlayerName");
 const hudGameId = document.getElementById("hudGameId");
 const hudGameStatus = document.getElementById("hudGameStatus");
@@ -313,6 +488,7 @@ const savedState = sessionStorage.getItem("gameState");
 if (!playerName || !gameId) {
     window.location.href = "index.html";
 } else {
+    hydrateLocalShipsState();
     buildBoard();
 
     if (savedState) {
@@ -348,6 +524,13 @@ function openWebSocket() {
             if (data.type === "GAME_STATE_UPDATED") {
                 fetchGameState();
                 return;
+            }
+
+            if (data.type === "ATTACK_RESULT") {
+                applyAttackToLocalShips(data);
+                if (currentGameState) {
+                    renderHud(currentGameState, playerName);
+                }
             }
 
             if (data.gameStatus && data.player1Name && data.player2Name) {
@@ -415,14 +598,11 @@ function renderHud(gameState, displayName) {
     }
 
     hudShips.innerHTML = "";
-    const ships = Array.isArray(gameState.myShips) ? gameState.myShips : [];
-    if (ships.length === 0) {
-        if (gameState.gameStatus === "PLACING_SHIPS") {
-            hudShipsRemaining.textContent = "4";
-        } else {
-            hudShipsRemaining.textContent = "-";
-        }
+    const ships = getShipsForHud(gameState);
+    const shipsRemaining = getShipsRemainingForHud(gameState, ships);
+    hudShipsRemaining.textContent = shipsRemaining === null ? "-" : shipsRemaining.toString();
 
+    if (ships.length === 0) {
         const emptyRow = document.createElement("tr");
         const emptyCell = document.createElement("td");
         emptyCell.colSpan = 4;
@@ -432,16 +612,12 @@ function renderHud(gameState, displayName) {
         return;
     }
 
-    // Calcula navios restantes (não destruídos)
-    const shipsRemaining = ships.filter(ship => ship?.destroyed !== true).length;
-    hudShipsRemaining.textContent = shipsRemaining.toString();
-
     ships.forEach(ship => {
         const row = document.createElement("tr");
         const shipName = ship?.name ?? "Desconhecido";
         const size = typeof ship?.size === "number" ? ship.size : "-";
         const hits = typeof ship?.hits === "number" ? ship.hits : "-";
-        const destroyed = ship?.destroyed === true ? "destruido" : "ativo";
+        const destroyed = getShipStatusLabel(ship, gameState.gameStatus);
 
         row.innerHTML = `
             <td>${shipName}</td>
@@ -518,13 +694,19 @@ if (board) {
                 if (placedShipType) {
                     removePlacedShip(placedShipType);
                     setTrashMode(false);
+                    if (currentGameState) {
+                        renderHud(currentGameState, playerName);
+                    }
                 }
 
                 return;
             }
 
             if (selectedShip && isShipAvailable(selectedShip)) {
-                placeShipOnBoard(selectedShip, target);
+                const placed = placeShipOnBoard(selectedShip, target);
+                if (placed && currentGameState) {
+                    renderHud(currentGameState, playerName);
+                }
             }
 
             return;
