@@ -109,6 +109,12 @@ h1 {
     font-size: 13px;
 }
 
+.form-hint {
+    margin: -6px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
 .card-game {
     width: min(820px, 96vw);
 }
@@ -384,4 +390,20 @@ button:hover {
     max-height: 220px;
     overflow: auto;
     font-size: 12px;
+}
+
+.ships-controls {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.ships-control-btn {
+    height: 38px;
+    padding: 0 14px;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 }
