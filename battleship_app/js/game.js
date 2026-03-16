@@ -19,7 +19,9 @@ document.addEventListener("DOMContentLoaded", () => {
 const board = document.getElementById("board");
 const shipsArea = document.getElementById("shipsArea");
 const rotateSelectedShipButton = document.getElementById("rotateSelectedShip");
+const trashModeButton = document.getElementById("trashModeButton");
 let selectedShip = null;
+let isTrashModeActive = false;
 const SHIP_SIZES = {
     porta_avioes: 5,
     bombardeiro: 4,
@@ -45,7 +47,14 @@ if (shipsArea) {
             return;
         }
 
+        setTrashMode(false);
         selectShip(ship);
+    });
+}
+
+if (trashModeButton) {
+    trashModeButton.addEventListener("click", () => {
+        setTrashMode(!isTrashModeActive);
     });
 }
 
@@ -75,6 +84,17 @@ function selectShip(shipElement) {
 
     selectedShip = shipElement;
     selectedShip.classList.add("ship-img--selected");
+}
+
+function setTrashMode(active) {
+    isTrashModeActive = active;
+
+    if (!trashModeButton) {
+        return;
+    }
+
+    trashModeButton.classList.toggle("ships-control-btn--active", isTrashModeActive);
+    trashModeButton.setAttribute("aria-pressed", isTrashModeActive ? "true" : "false");
 }
 
 function cacheShipPreviewSize(shipElement) {
@@ -198,6 +218,47 @@ function placeShipOnBoard(shipElement, cell) {
     shipElement.classList.remove("ship-img--selected");
     if (selectedShip === shipElement) {
         selectedShip = null;
+    }
+
+    return true;
+}
+
+function getPlacedShipTypeByCell(row, col) {
+    for (const [shipType, cells] of placedShips.entries()) {
+        if (cells.some(placedCell => placedCell.row === row && placedCell.col === col)) {
+            return shipType;
+        }
+    }
+
+    return null;
+}
+
+function removePlacedShip(shipType) {
+    const cells = placedShips.get(shipType);
+    if (!cells || cells.length === 0) {
+        return false;
+    }
+
+    const overlay = board?.querySelector(`.board-ship[data-ship="${shipType}"]`);
+    if (overlay) {
+        overlay.remove();
+    }
+
+    cells.forEach(({ row, col }) => {
+        occupiedCells.delete(cellKey(row, col));
+        const boardCell = getBoardCell(row, col);
+        if (boardCell) {
+            boardCell.classList.remove("has-ship");
+        }
+    });
+
+    placedShips.delete(shipType);
+
+    const shipElement = shipsArea?.querySelector(`.ship-img[data-ship="${shipType}"]`);
+    if (shipElement instanceof HTMLElement) {
+        shipElement.dataset.placed = "false";
+        shipElement.style.opacity = "";
+        selectShip(shipElement);
     }
 
     return true;
@@ -443,6 +504,19 @@ if (board) {
         const gameStatus = currentGameState?.gameStatus;
 
         if (gameStatus === "PLACING_SHIPS") {
+            if (isTrashModeActive) {
+                const row = Number(target.dataset.row);
+                const col = Number(target.dataset.col);
+                const placedShipType = getPlacedShipTypeByCell(row, col);
+
+                if (placedShipType) {
+                    removePlacedShip(placedShipType);
+                    setTrashMode(false);
+                }
+
+                return;
+            }
+
             if (selectedShip && isShipAvailable(selectedShip)) {
                 placeShipOnBoard(selectedShip, target);
             }
