@@ -241,6 +241,7 @@ const hudShips = document.getElementById("hudShips");
 const waitingMessage = document.getElementById("waitingMessage");
 const socketStatus = document.getElementById("socketStatus");
 const copyGameId = document.getElementById("copyGameId");
+let currentGameState = null;
 
 const gameLog = document.getElementById("gameLog");
 
@@ -324,6 +325,8 @@ function buildBoard() {
 }
 
 function renderHud(gameState, displayName) {
+    currentGameState = gameState || null;
+
     hudPlayerName.textContent = displayName;
     hudGameId.textContent = gameState.gameId ? `#${gameState.gameId}` : "#-";
     let statusLabel = "-";
@@ -437,10 +440,18 @@ if (board) {
             return;
         }
 
-        if (selectedShip && isShipAvailable(selectedShip)) {
-            if (placeShipOnBoard(selectedShip, target)) {
-                return;
+        const gameStatus = currentGameState?.gameStatus;
+
+        if (gameStatus === "PLACING_SHIPS") {
+            if (selectedShip && isShipAvailable(selectedShip)) {
+                placeShipOnBoard(selectedShip, target);
             }
+
+            return;
+        }
+
+        if (gameStatus !== "IN_PROGRESS") {
+            return;
         }
 
         target.classList.toggle("is-selected");
