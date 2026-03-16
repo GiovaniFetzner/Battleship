@@ -1,4 +1,52 @@
+// Rotação dos navios na área de drag and drop
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".rotate-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            const shipImg = btn.parentElement.querySelector(".ship-img");
+            if (!shipImg) return;
+            const current = shipImg.getAttribute("data-orientation") || "horizontal";
+            const next = current === "horizontal" ? "vertical" : "horizontal";
+            shipImg.setAttribute("data-orientation", next);
+            shipImg.style.transform = next === "vertical" ? "rotate(90deg)" : "rotate(0deg)";
+        });
+    });
+});
 const board = document.getElementById("board");
+const shipsArea = document.getElementById("shipsArea");
+// Drag and Drop dos navios
+let draggedShip = null;
+
+if (shipsArea) {
+    shipsArea.addEventListener("dragstart", (e) => {
+        if (e.target.classList.contains("ship-img")) {
+            draggedShip = e.target;
+        }
+    });
+    shipsArea.addEventListener("dragend", () => {
+        draggedShip = null;
+    });
+}
+
+if (board) {
+    board.addEventListener("dragover", (e) => {
+        e.preventDefault();
+    });
+    board.addEventListener("drop", (e) => {
+        e.preventDefault();
+        if (!draggedShip) return;
+        const cell = e.target.closest(".board-cell");
+        if (!cell) return;
+        // Clona o navio e mantém orientação
+        const clone = draggedShip.cloneNode(true);
+        const orientation = draggedShip.getAttribute("data-orientation") || "horizontal";
+        clone.setAttribute("data-orientation", orientation);
+        clone.style.transform = orientation === "vertical" ? "rotate(90deg)" : "rotate(0deg)";
+        cell.appendChild(clone);
+        // Marca navio como usado
+        draggedShip.style.opacity = 0.5;
+        draggedShip.setAttribute("draggable", false);
+    });
+}
 const hudPlayerName = document.getElementById("hudPlayerName");
 const hudGameId = document.getElementById("hudGameId");
 const hudGameStatus = document.getElementById("hudGameStatus");
@@ -9,7 +57,8 @@ const hudShips = document.getElementById("hudShips");
 const waitingMessage = document.getElementById("waitingMessage");
 const socketStatus = document.getElementById("socketStatus");
 const copyGameId = document.getElementById("copyGameId");
-const copyGameIdFeedback = document.getElementById("copyGameIdFeedback");
+
+const gameLog = document.getElementById("gameLog");
 
 const playerName = sessionStorage.getItem("playerName");
 const gameId = sessionStorage.getItem("gameId");
@@ -33,26 +82,32 @@ if (!playerName || !gameId) {
 }
 
 function openWebSocket() {
-    const socket = new WebSocket("ws://localhost:8080/ws/game");
+    const socket = new WebSocket(
+        `ws://localhost:8080/ws/game?gameId=${encodeURIComponent(gameId)}&playerName=${encodeURIComponent(playerName)}`
+    );
 
     socket.addEventListener("open", () => {
         socketStatus.textContent = "Conectado";
-        socket.send(
-            JSON.stringify({
-                type: "JOIN_GAME_BY_CODE",
-                roomCode: gameId,
-                playerName: playerName
-            })
-        );
+        console.log("WebSocket conectado");
     });
 
     socket.addEventListener("message", event => {
         try {
+            console.log("Mensagem recebida:", event.data);
+
             const data = JSON.parse(event.data);
-            if (data.type === "GAME_STATE") {
-                renderHud(data, playerName);
-                sessionStorage.setItem("gameState", JSON.stringify(data));
+
+            console.log("WebSocket message:", data);
+
+            if (data.type === "GAME_STATE_UPDATED") {
+                fetchGameState();
+                return;
             }
+
+            if (data.gameStatus && data.player1Name && data.player2Name) {
+                renderHud(data, playerName);
+            }
+
         } catch (error) {
             console.error(error);
         }
@@ -66,6 +121,7 @@ function openWebSocket() {
         socketStatus.textContent = "Erro";
     });
 }
+
 
 function buildBoard() {
     board.innerHTML = "";
@@ -86,10 +142,18 @@ function buildBoard() {
 function renderHud(gameState, displayName) {
     hudPlayerName.textContent = displayName;
     hudGameId.textContent = gameState.gameId ? `#${gameState.gameId}` : "#-";
-    const statusLabel =
-        gameState.gameStatus === "WAITING_FOR_PLAYERS"
-            ? "Aguardando outro jogador"
-            : gameState.gameStatus ?? "-";
+    let statusLabel = "-";
+    if (gameState.gameStatus === "WAITING_FOR_PLAYERS") {
+        statusLabel = "Aguardando outro jogador";
+    } else if (gameState.gameStatus === "PLACING_SHIPS") {
+        statusLabel = "Posicione seus navios";
+    } else if (gameState.gameStatus === "IN_PROGRESS") {
+        statusLabel = "Batalha em andamento";
+    } else if (gameState.gameStatus === "FINISHED") {
+        statusLabel = gameState.winner ? `Vitória de ${gameState.winner}` : "Jogo finalizado";
+    } else if (gameState.gameStatus) {
+        statusLabel = gameState.gameStatus;
+    }
     hudGameStatus.textContent = statusLabel;
     hudMyTurn.textContent =
         typeof gameState.myTurn === "boolean" ? (gameState.myTurn ? "Sim" : "Nao") : "-";
@@ -189,3 +253,25 @@ board.addEventListener("click", event => {
     }
     target.classList.toggle("is-selected");
 });
+
+
+async function fetchGameState() {
+    try {
+        const response = await fetch(
+            `http://localhost:8080/api/game/${gameId}?playerName=${playerName}`
+        );
+
+        if (!response.ok) {
+            console.error("Erro ao buscar estado:", response.status);
+            return;
+        }
+
+        const state = await response.json();
+
+        sessionStorage.setItem("gameState", JSON.stringify(state));
+        renderHud(state, playerName);
+
+    } catch (error) {
+        console.error("Erro ao buscar estado:", error);
+    }
+}

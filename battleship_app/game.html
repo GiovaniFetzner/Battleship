@@ -90,6 +90,32 @@
             <section id="boardSection" class="board-section" aria-live="polite">
                 <h2>Mapa do jogo</h2>
                 <div id="board" class="board" role="grid" aria-label="Mapa 10 por 10"></div>
+                <div id="shipsArea" class="ships-area">
+                    <h3>Arraste seus navios para o mapa</h3>
+                    <h4>Dica: Posicione os navio no quadrado inicial</h4>
+                    <div class="ships-controls" aria-label="Controles de navio">
+                        <button id="rotateSelectedShip" type="button" class="ships-control-btn">Rotate</button>
+                        <button id="trashModeButton" type="button" class="ships-control-btn">🗑 Lixeira</button>
+                    </div>
+                    <div class="ships-list">
+                        <div class="ship-draggable">
+                            <img src="./img/porta_avioes.png" alt="Porta-aviões" draggable="true"
+                                data-ship="porta_avioes" class="ship-img" data-orientation="horizontal" />
+                        </div>
+                        <div class="ship-draggable">
+                            <img src="./img/bombardeiro.png" alt="Bombardeiro" draggable="true" data-ship="bombardeiro"
+                                class="ship-img" data-orientation="horizontal" />
+                        </div>
+                        <div class="ship-draggable">
+                            <img src="./img/submarino.png" alt="Submarino" draggable="true" data-ship="submarino"
+                                class="ship-img" data-orientation="horizontal" />
+                        </div>
+                        <div class="ship-draggable">
+                            <img src="./img/lancha.png" alt="Lancha" draggable="true" data-ship="lancha"
+                                class="ship-img" data-orientation="horizontal" />
+                        </div>
+                    </div>
+                </div>
             </section>
         </section>
     </main>
