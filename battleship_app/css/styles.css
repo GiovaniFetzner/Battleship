@@ -318,6 +318,7 @@ h1 {
 }
 
 .board {
+    position: relative;
     width: min(320px, 84vw);
     aspect-ratio: 1;
     display: grid;
@@ -327,11 +328,52 @@ h1 {
 }
 
 .board-cell {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 0;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 6px;
     cursor: pointer;
     transition: transform 0.12s ease, background 0.12s ease, border 0.12s ease;
+}
+
+.board-cell.has-ship {
+    background: rgba(58, 123, 213, 0.32);
+    border-color: rgba(155, 246, 255, 0.65);
+}
+
+.board-ship {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+    overflow: hidden;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background:
+        repeating-linear-gradient(135deg,
+            rgba(13, 27, 42, 0.15) 0,
+            rgba(13, 27, 42, 0.15) 8px,
+            rgba(255, 255, 255, 0.08) 8px,
+            rgba(255, 255, 255, 0.08) 16px),
+        linear-gradient(140deg, rgba(58, 123, 213, 0.7), rgba(0, 210, 255, 0.55));
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+}
+
+.board-ship-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    opacity: 0.82;
+}
+
+.board-ship-image--vertical {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) rotate(90deg);
 }
 
 .board-cell:hover {
@@ -401,6 +443,12 @@ button:hover {
     gap: 8px;
 }
 
+.ships-list {
+    display: grid;
+    gap: 12px;
+    justify-items: start;
+}
+
 .ships-control-btn {
     height: 38px;
     padding: 0 14px;
@@ -409,4 +457,30 @@ button:hover {
     align-items: center;
     justify-content: center;
     line-height: 1;
+}
+
+.ship-img--selected {
+    outline: 2px solid rgba(155, 246, 255, 0.9);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+.ship-draggable {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+}
+
+.ship-img {
+    display: block;
+    transform-origin: center;
+    transition: transform 0.15s ease;
+}
+
+.ship-img[data-orientation="vertical"] {
+    position: absolute;
+    left: 50%;
+    top: 50%;
 }
