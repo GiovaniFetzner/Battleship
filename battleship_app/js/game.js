@@ -405,10 +405,6 @@ function renderHud(gameState, displayName) {
     hudGameStatus.textContent = statusLabel;
     hudMyTurn.textContent =
         typeof gameState.myTurn === "boolean" ? (gameState.myTurn ? "Sim" : "Nao") : "-";
-    hudShipsRemaining.textContent =
-        typeof gameState.myShipsRemaining === "number"
-            ? gameState.myShipsRemaining.toString()
-            : "-";
     hudMyAttacks.textContent =
         gameState.myAttacks === null || typeof gameState.myAttacks === "undefined"
             ? "Nenhum"
@@ -421,6 +417,12 @@ function renderHud(gameState, displayName) {
     hudShips.innerHTML = "";
     const ships = Array.isArray(gameState.myShips) ? gameState.myShips : [];
     if (ships.length === 0) {
+        if (gameState.gameStatus === "PLACING_SHIPS") {
+            hudShipsRemaining.textContent = "4";
+        } else {
+            hudShipsRemaining.textContent = "-";
+        }
+
         const emptyRow = document.createElement("tr");
         const emptyCell = document.createElement("td");
         emptyCell.colSpan = 4;
@@ -429,6 +431,10 @@ function renderHud(gameState, displayName) {
         hudShips.appendChild(emptyRow);
         return;
     }
+
+    // Calcula navios restantes (não destruídos)
+    const shipsRemaining = ships.filter(ship => ship?.destroyed !== true).length;
+    hudShipsRemaining.textContent = shipsRemaining.toString();
 
     ships.forEach(ship => {
         const row = document.createElement("tr");
