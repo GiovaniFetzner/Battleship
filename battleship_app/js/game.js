@@ -161,7 +161,7 @@ function processAttackResult(eventData) {
     }
 
     pendingAttacks.delete(key);
-    
+
     console.log("Attack processed:", { x, y, result, wasMyAttack, boardType: wasMyAttack ? "opponent" : "player" });
 }
 
@@ -759,9 +759,7 @@ function openWebSocket() {
             if (data.type === "ATTACK_RESULT") {
                 processAttackResult(data);
                 applyAttackToLocalShips(data);
-                if (currentGameState) {
-                    renderHud(currentGameState, playerName);
-                }
+                fetchGameState();
                 return;
             }
 
@@ -884,7 +882,7 @@ function blinkMyTurnField() {
     myTurnBlinkTimeoutId = window.setTimeout(() => {
         hudMyTurn.classList.remove("hud-value--blink-turn");
         myTurnBlinkTimeoutId = null;
-    }, 950);
+    }, 2400);
 }
 
 function renderHud(gameState, displayName) {
