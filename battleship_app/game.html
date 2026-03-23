@@ -108,7 +108,18 @@
 
             <section id="boardSection" class="board-section" aria-live="polite">
                 <h2>Mapa do jogo</h2>
-                <div id="board" class="board" role="grid" aria-label="Mapa 10 por 10"></div>
+                <div class="battle-boards">
+                    <section class="battle-board-panel">
+                        <h3 class="battle-board-title">Grid do oponente</h3>
+                        <div id="opponentBoard" class="board board--opponent" role="grid"
+                            aria-label="Mapa do oponente 10 por 10"></div>
+                    </section>
+                    <section class="battle-board-panel">
+                        <h3 class="battle-board-title">Seu grid</h3>
+                        <div id="board" class="board" role="grid" aria-label="Seu mapa 10 por 10"></div>
+                    </section>
+                </div>
+                <p id="battleHint" class="battle-hint">No ataque: bolinha branca para agua e X destacado para hit.</p>
                 <div id="shipsArea" class="ships-area">
                     <h3>Posicione seus navios no mapa</h3>
                     <h4>Dica: selecione o navio e posicione no quadrado inicial</h4>

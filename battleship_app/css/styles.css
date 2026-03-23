@@ -431,6 +431,33 @@ h1 {
     gap: 12px;
 }
 
+.battle-boards {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.battle-board-panel {
+    display: grid;
+    gap: 8px;
+}
+
+.battle-board-title {
+    margin: 0;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+}
+
+.battle-hint {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+}
+
 .board-section h2 {
     margin: 0;
     font-size: 16px;
@@ -445,6 +472,14 @@ h1 {
     grid-template-columns: repeat(10, 1fr);
     grid-template-rows: repeat(10, 1fr);
     gap: 4px;
+}
+
+.board--opponent.board--disabled {
+    opacity: 0.6;
+}
+
+.board--opponent.board--disabled .board-cell {
+    cursor: not-allowed;
 }
 
 .board-cell {
@@ -768,4 +803,52 @@ button:hover {
 
 .modal-button:active {
     transform: translateY(0);
+}
+
+.board-cell.board-cell--attacked {
+    pointer-events: none;
+}
+
+.board-cell.board-cell--miss {
+    background: #f8f9fa;
+    border-color: rgba(255, 255, 255, 0.95);
+}
+
+.board-cell.board-cell--miss::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #2d3142;
+    transform: translate(-50%, -50%);
+}
+
+.board-cell.board-cell--hit {
+    background: linear-gradient(145deg, rgba(224, 75, 75, 0.92), rgba(255, 168, 76, 0.85));
+    border-color: rgba(255, 215, 130, 0.95);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.26);
+}
+
+.board-cell.board-cell--hit::before,
+.board-cell.board-cell--hit::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 16px;
+    height: 2px;
+    background: #fff6de;
+    transform-origin: center;
+    box-shadow: 0 0 6px rgba(255, 246, 222, 0.5);
+}
+
+.board-cell.board-cell--hit::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.board-cell.board-cell--hit::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
 }

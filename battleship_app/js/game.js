@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 const board = document.getElementById("board");
+const opponentBoard = document.getElementById("opponentBoard");
 const shipsArea = document.getElementById("shipsArea");
 const rotateSelectedShipButton = document.getElementById("rotateSelectedShip");
 const trashModeButton = document.getElementById("trashModeButton");
@@ -41,6 +42,9 @@ const SHIP_LABELS = {
 const occupiedCells = new Set();
 const placedShips = new Map();
 const localShipsState = new Map();
+const pendingAttacks = new Set();
+const myAttackResults = new Map();
+const attacksOnMyBoard = new Set();
 
 Object.entries(SHIP_SIZES).forEach(([shipType, size]) => {
     localShipsState.set(shipType, {
@@ -64,6 +68,101 @@ function areAllShipsPlaced() {
 
 function isPlacementLocked() {
     return isPlayerReadyConfirmed || isReadySubmitting;
+}
+
+function toAttackKey(x, y) {
+    return `${x}-${y}`;
+}
+
+function getBoardCellByCoordinates(boardElement, row, col) {
+    return boardElement?.querySelector(`.board-cell[data-row="${row}"][data-col="${col}"]`) || null;
+}
+
+function normalizeAttackResult(result) {
+    const normalized = String(result || "").toUpperCase();
+    if (normalized === "HIT" || normalized === "DESTROYED") {
+        return "HIT";
+    }
+
+    return normalized === "MISS" ? "MISS" : null;
+}
+
+function markAttackOnBoard(boardElement, row, col, result) {
+    const normalizedResult = normalizeAttackResult(result);
+    if (!normalizedResult) {
+        return;
+    }
+
+    const cell = getBoardCellByCoordinates(boardElement, row, col);
+    if (!cell) {
+        return;
+    }
+
+    cell.classList.remove("is-selected", "board-cell--miss", "board-cell--hit");
+    cell.classList.add("board-cell--attacked");
+    cell.classList.add(normalizedResult === "HIT" ? "board-cell--hit" : "board-cell--miss");
+}
+
+function updateBattleUi(gameState) {
+    if (!opponentBoard) {
+        return;
+    }
+
+    const canAttackNow = gameState?.gameStatus === "IN_PROGRESS" && gameState?.myTurn === true;
+    opponentBoard.classList.toggle("board--disabled", !canAttackNow);
+
+    if (battleHint) {
+        if (gameState?.gameStatus === "PLACING_SHIPS") {
+            battleHint.textContent = "Posicione seus navios no seu grid. O grid do oponente sera liberado na fase de batalha.";
+        } else if (gameState?.gameStatus === "IN_PROGRESS") {
+            battleHint.textContent = canAttackNow
+                ? "Sua vez: clique no grid do oponente para atacar."
+                : "Aguarde o turno do adversario para atacar.";
+        } else if (gameState?.gameStatus === "FINISHED") {
+            battleHint.textContent = "Partida encerrada.";
+        } else {
+            battleHint.textContent = "No ataque: bolinha branca para agua e X destacado para hit.";
+        }
+    }
+}
+
+function processAttackResult(eventData) {
+    const x = Number(eventData?.x);
+    const y = Number(eventData?.y);
+    if (!Number.isInteger(x) || !Number.isInteger(y)) {
+        return;
+    }
+
+    const key = toAttackKey(x, y);
+    const result = normalizeAttackResult(eventData?.result);
+    if (!result) {
+        return;
+    }
+
+    const isPendingAttack = pendingAttacks.has(key);
+    const isGameOver = eventData?.gameOver === true;
+
+    let wasMyAttack = isPendingAttack;
+
+    if (!wasMyAttack && isGameOver) {
+        wasMyAttack = eventData?.winner === playerName;
+    }
+
+    if (!wasMyAttack && !isGameOver) {
+        wasMyAttack = eventData?.currentPlayer !== playerName;
+    }
+
+    if (wasMyAttack) {
+        markAttackOnBoard(opponentBoard, y, x, result);
+        myAttackResults.set(key, result);
+    } else {
+        markAttackOnBoard(board, y, x, result);
+        attacksOnMyBoard.add(key);
+    }
+
+    pendingAttacks.delete(key);
+    
+    console.log("Attack processed:", { x, y, result, wasMyAttack, boardType: wasMyAttack ? "opponent" : "player" });
 }
 
 function updateReadyButtonState(gameStatus = currentGameState?.gameStatus) {
@@ -508,7 +607,7 @@ function applyAttackToLocalShips(eventData) {
     }
 
     for (const ship of localShipsState.values()) {
-        const matchesCell = ship.cells.some(cell => cell.row === x && cell.col === y);
+        const matchesCell = ship.cells.some(cell => cell.row === y && cell.col === x);
         if (!matchesCell || ship.destroyed) {
             continue;
         }
@@ -584,6 +683,7 @@ const copyGameId = document.getElementById("copyGameId");
 const phaseTransition = document.getElementById("phaseTransition");
 const phaseTransitionTitle = document.getElementById("phaseTransitionTitle");
 const phaseTransitionSubtitle = document.getElementById("phaseTransitionSubtitle");
+const battleHint = document.getElementById("battleHint");
 let currentGameState = null;
 let lastRenderedGameStatus = null;
 let phaseTransitionTimeoutId = null;
@@ -657,14 +757,17 @@ function openWebSocket() {
             }
 
             if (data.type === "ATTACK_RESULT") {
+                processAttackResult(data);
                 applyAttackToLocalShips(data);
                 if (currentGameState) {
                     renderHud(currentGameState, playerName);
                 }
+                return;
             }
 
             if (data.type === "ERROR") {
                 isReadySubmitting = false;
+                pendingAttacks.clear();
                 updateReadyButtonState();
                 console.error("Erro do servidor:", data.message);
                 return;
@@ -692,19 +795,28 @@ function openWebSocket() {
 
 
 function buildBoard() {
-    board.innerHTML = "";
-    for (let row = 0; row < 10; row += 1) {
-        for (let col = 0; col < 10; col += 1) {
-            const cell = document.createElement("button");
-            cell.type = "button";
-            cell.className = "board-cell";
-            cell.dataset.row = row.toString();
-            cell.dataset.col = col.toString();
-            cell.setAttribute("role", "gridcell");
-            cell.setAttribute("aria-label", `Linha ${row + 1}, Coluna ${col + 1}`);
-            board.appendChild(cell);
+    const buildGrid = boardElement => {
+        if (!boardElement) {
+            return;
         }
-    }
+
+        boardElement.innerHTML = "";
+        for (let row = 0; row < 10; row += 1) {
+            for (let col = 0; col < 10; col += 1) {
+                const cell = document.createElement("button");
+                cell.type = "button";
+                cell.className = "board-cell";
+                cell.dataset.row = row.toString();
+                cell.dataset.col = col.toString();
+                cell.setAttribute("role", "gridcell");
+                cell.setAttribute("aria-label", `Linha ${row + 1}, Coluna ${col + 1}`);
+                boardElement.appendChild(cell);
+            }
+        }
+    };
+
+    buildGrid(board);
+    buildGrid(opponentBoard);
 }
 
 function showPhaseTransition(title, subtitle) {
@@ -813,14 +925,13 @@ function renderHud(gameState, displayName) {
 
     lastRenderedMyTurn = currentMyTurn;
 
-    hudMyAttacks.textContent =
-        gameState.myAttacks === null || typeof gameState.myAttacks === "undefined"
-            ? "Nenhum"
-            : JSON.stringify(gameState.myAttacks);
+    hudMyAttacks.textContent = myAttackResults.size.toString();
 
     if (waitingMessage) {
         waitingMessage.hidden = gameState.gameStatus !== "WAITING_FOR_PLAYERS";
     }
+
+    updateBattleUi(gameState);
 
     updateReadyButtonState(gameState.gameStatus);
 
@@ -870,6 +981,31 @@ function sendGameMessage(payload) {
     }
 
     gameSocket.send(JSON.stringify(payload));
+}
+
+function sendAttack(row, col) {
+    const x = col;
+    const y = row;
+    const key = toAttackKey(x, y);
+
+    if (myAttackResults.has(key) || pendingAttacks.has(key)) {
+        return;
+    }
+
+    pendingAttacks.add(key);
+
+    try {
+        sendGameMessage({
+            type: "ATTACK",
+            gameId,
+            playerName,
+            x,
+            y
+        });
+    } catch (error) {
+        pendingAttacks.delete(key);
+        throw error;
+    }
 }
 
 function sendShipsPlacementAndReady() {
@@ -997,8 +1133,39 @@ if (board) {
         if (gameStatus !== "IN_PROGRESS") {
             return;
         }
+    });
+}
 
-        target.classList.toggle("is-selected");
+if (opponentBoard) {
+    opponentBoard.addEventListener("click", event => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+            return;
+        }
+
+        if (!target.classList.contains("board-cell")) {
+            return;
+        }
+
+        if (currentGameState?.gameStatus !== "IN_PROGRESS") {
+            return;
+        }
+
+        if (currentGameState?.myTurn !== true) {
+            return;
+        }
+
+        const row = Number(target.dataset.row);
+        const col = Number(target.dataset.col);
+        if (!Number.isInteger(row) || !Number.isInteger(col)) {
+            return;
+        }
+
+        try {
+            sendAttack(row, col);
+        } catch (error) {
+            console.error("Falha ao enviar ataque:", error);
+        }
     });
 }
 
