@@ -54,6 +54,24 @@ function isShipAvailable(shipElement) {
     return shipElement?.dataset.placed !== "true";
 }
 
+function showWaitingWarning() {
+    const warningModal = document.getElementById("warningModal");
+    const warningModalClose = document.getElementById("warningModalClose");
+
+    if (!warningModal) return;
+
+    warningModal.classList.remove("modal--hidden");
+    warningModal.setAttribute("aria-hidden", "false");
+
+    const closeModal = () => {
+        warningModal.classList.add("modal--hidden");
+        warningModal.setAttribute("aria-hidden", "true");
+        warningModalClose?.removeEventListener("click", closeModal);
+    };
+
+    warningModalClose?.addEventListener("click", closeModal);
+}
+
 if (shipsArea) {
     shipsArea.addEventListener("click", event => {
         const target = event.target;
@@ -66,6 +84,11 @@ if (shipsArea) {
             return;
         }
 
+        if (currentGameState?.gameStatus === "WAITING_FOR_PLAYERS") {
+            showWaitingWarning();
+            return;
+        }
+
         setTrashMode(false);
         selectShip(ship);
     });
@@ -73,12 +96,21 @@ if (shipsArea) {
 
 if (trashModeButton) {
     trashModeButton.addEventListener("click", () => {
+        if (currentGameState?.gameStatus === "WAITING_FOR_PLAYERS") {
+            showWaitingWarning();
+            return;
+        }
         setTrashMode(!isTrashModeActive);
     });
 }
 
 if (rotateSelectedShipButton) {
     rotateSelectedShipButton.addEventListener("click", () => {
+        if (currentGameState?.gameStatus === "WAITING_FOR_PLAYERS") {
+            showWaitingWarning();
+            return;
+        }
+
         if (!selectedShip) {
             const firstAvailable = shipsArea?.querySelector('.ship-img[data-placed="false"]');
             if (firstAvailable instanceof HTMLElement) {
@@ -684,6 +716,11 @@ if (board) {
         }
 
         const gameStatus = currentGameState?.gameStatus;
+
+        if (gameStatus === "WAITING_FOR_PLAYERS") {
+            showWaitingWarning();
+            return;
+        }
 
         if (gameStatus === "PLACING_SHIPS") {
             if (isTrashModeActive) {

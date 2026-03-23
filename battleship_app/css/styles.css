@@ -514,3 +514,117 @@ button:hover {
     left: 50%;
     top: 50%;
 }
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.5s ease 0.15s, visibility 0.5s ease 0.15s;
+}
+
+.modal--hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+
+.modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: -1;
+}
+
+.modal-container {
+    position: relative;
+    z-index: 1000;
+    width: min(380px, 90vw);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content {
+    padding: 32px;
+    border-radius: 16px;
+    background: rgba(13, 27, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: modalSlideIn 0.6s ease 0.15s both;
+}
+
+.modal--hidden .modal-content {
+    animation: modalSlideOut 0.5s ease forwards;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes modalSlideOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.3px;
+}
+
+.modal-message {
+    margin: 0;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.modal-button {
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(120deg, #f4a261, #e76f51);
+    color: #1b1b1b;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.2s ease, filter 0.2s ease;
+    align-self: flex-end;
+}
+
+.modal-button:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+}
+
+.modal-button:active {
+    transform: translateY(0);
+}
