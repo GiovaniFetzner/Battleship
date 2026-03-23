@@ -581,7 +581,14 @@ const hudShips = document.getElementById("hudShips");
 const waitingMessage = document.getElementById("waitingMessage");
 const socketStatus = document.getElementById("socketStatus");
 const copyGameId = document.getElementById("copyGameId");
+const phaseTransition = document.getElementById("phaseTransition");
+const phaseTransitionTitle = document.getElementById("phaseTransitionTitle");
+const phaseTransitionSubtitle = document.getElementById("phaseTransitionSubtitle");
 let currentGameState = null;
+let lastRenderedGameStatus = null;
+let phaseTransitionTimeoutId = null;
+let lastRenderedMyTurn = null;
+let myTurnBlinkTimeoutId = null;
 
 const gameLog = document.getElementById("gameLog");
 
@@ -700,8 +707,81 @@ function buildBoard() {
     }
 }
 
+function showPhaseTransition(title, subtitle) {
+    if (!phaseTransition || !phaseTransitionTitle || !phaseTransitionSubtitle) {
+        return;
+    }
+
+    phaseTransitionTitle.textContent = title;
+    phaseTransitionSubtitle.textContent = subtitle;
+    phaseTransition.setAttribute("aria-hidden", "false");
+    phaseTransition.classList.remove("phase-transition--visible");
+    void phaseTransition.offsetWidth;
+    phaseTransition.classList.add("phase-transition--visible");
+
+    if (phaseTransitionTimeoutId) {
+        window.clearTimeout(phaseTransitionTimeoutId);
+    }
+
+    phaseTransitionTimeoutId = window.setTimeout(() => {
+        phaseTransition.classList.remove("phase-transition--visible");
+        phaseTransition.setAttribute("aria-hidden", "true");
+        phaseTransitionTimeoutId = null;
+    }, 2300);
+}
+
+function maybeShowPhaseTransition(previousStatus, gameState) {
+    const currentStatus = gameState?.gameStatus;
+
+    if (!previousStatus || !currentStatus || previousStatus === currentStatus) {
+        return;
+    }
+
+    if (previousStatus === "WAITING_FOR_PLAYERS" && currentStatus === "PLACING_SHIPS") {
+        showPhaseTransition("Fase de posicionamento", "Os dois jogadores entraram. Posicione seus navios.");
+        return;
+    }
+
+    if (previousStatus === "PLACING_SHIPS" && currentStatus === "IN_PROGRESS") {
+        blinkMyTurnField();
+        showPhaseTransition(
+            "Fase de ataque iniciada",
+            gameState.myTurn ? "Sua vez de atacar." : "Aguarde o ataque do adversario."
+        );
+        return;
+    }
+
+    if (currentStatus === "FINISHED") {
+        showPhaseTransition("Jogo finalizado", gameState.winner ? `Vencedor: ${gameState.winner}` : "Partida encerrada.");
+    }
+}
+
+function blinkMyTurnField() {
+    if (!hudMyTurn) {
+        return;
+    }
+
+    hudMyTurn.classList.remove("hud-value--blink-turn");
+    void hudMyTurn.offsetWidth;
+    hudMyTurn.classList.add("hud-value--blink-turn");
+
+    if (myTurnBlinkTimeoutId) {
+        window.clearTimeout(myTurnBlinkTimeoutId);
+    }
+
+    myTurnBlinkTimeoutId = window.setTimeout(() => {
+        hudMyTurn.classList.remove("hud-value--blink-turn");
+        myTurnBlinkTimeoutId = null;
+    }, 950);
+}
+
 function renderHud(gameState, displayName) {
+    const previousStatus = lastRenderedGameStatus;
+    const nextStatus = gameState?.gameStatus || null;
+
     currentGameState = gameState || null;
+    maybeShowPhaseTransition(previousStatus, gameState);
+    lastRenderedGameStatus = nextStatus;
 
     if (gameState.gameStatus === "IN_PROGRESS" || gameState.gameStatus === "FINISHED") {
         isPlayerReadyConfirmed = true;
@@ -723,8 +803,16 @@ function renderHud(gameState, displayName) {
         statusLabel = gameState.gameStatus;
     }
     hudGameStatus.textContent = statusLabel;
+    const currentMyTurn = typeof gameState.myTurn === "boolean" ? gameState.myTurn : null;
     hudMyTurn.textContent =
-        typeof gameState.myTurn === "boolean" ? (gameState.myTurn ? "Sim" : "Nao") : "-";
+        currentMyTurn === null ? "-" : (currentMyTurn ? "Sim" : "Nao");
+
+    if (lastRenderedMyTurn !== null && currentMyTurn !== null && currentMyTurn !== lastRenderedMyTurn) {
+        blinkMyTurnField();
+    }
+
+    lastRenderedMyTurn = currentMyTurn;
+
     hudMyAttacks.textContent =
         gameState.myAttacks === null || typeof gameState.myAttacks === "undefined"
             ? "Nenhum"
