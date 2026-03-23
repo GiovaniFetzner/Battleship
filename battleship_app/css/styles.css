@@ -476,6 +476,27 @@ button:hover {
     filter: brightness(1.06);
 }
 
+.ships-control-btn--ready {
+    background: linear-gradient(120deg, #2a9d8f, #8ac926);
+    color: #f3fff7;
+}
+
+.ships-control-btn--ready:hover {
+    filter: brightness(1.08);
+}
+
+.ships-control-btn--ready:disabled {
+    cursor: not-allowed;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(230, 238, 252, 0.65);
+    transform: none;
+    filter: none;
+}
+
+.ships-control-btn--ready.ships-control-btn--waiting {
+    background: linear-gradient(120deg, #f4a261, #e76f51);
+}
+
 @keyframes trash-mode-pulse {
 
     0%,

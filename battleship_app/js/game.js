@@ -20,8 +20,12 @@ const board = document.getElementById("board");
 const shipsArea = document.getElementById("shipsArea");
 const rotateSelectedShipButton = document.getElementById("rotateSelectedShip");
 const trashModeButton = document.getElementById("trashModeButton");
+const readyButton = document.getElementById("readyButton");
 let selectedShip = null;
 let isTrashModeActive = false;
+let isPlayerReadyConfirmed = false;
+let isReadySubmitting = false;
+let gameSocket = null;
 const SHIP_SIZES = {
     porta_avioes: 5,
     bombardeiro: 4,
@@ -52,6 +56,57 @@ Object.entries(SHIP_SIZES).forEach(([shipType, size]) => {
 
 function isShipAvailable(shipElement) {
     return shipElement?.dataset.placed !== "true";
+}
+
+function areAllShipsPlaced() {
+    return placedShips.size === Object.keys(SHIP_SIZES).length;
+}
+
+function isPlacementLocked() {
+    return isPlayerReadyConfirmed || isReadySubmitting;
+}
+
+function updateReadyButtonState(gameStatus = currentGameState?.gameStatus) {
+    if (!readyButton) {
+        return;
+    }
+
+    readyButton.classList.remove("ships-control-btn--waiting");
+
+    if (gameStatus === "WAITING_FOR_PLAYERS") {
+        readyButton.disabled = true;
+        readyButton.textContent = "Aguardando J2";
+        return;
+    }
+
+    if (gameStatus === "IN_PROGRESS" || gameStatus === "FINISHED") {
+        readyButton.disabled = true;
+        readyButton.textContent = "Pronto";
+        return;
+    }
+
+    if (isReadySubmitting) {
+        readyButton.disabled = true;
+        readyButton.classList.add("ships-control-btn--waiting");
+        readyButton.textContent = "Enviando...";
+        return;
+    }
+
+    if (isPlayerReadyConfirmed) {
+        readyButton.disabled = true;
+        readyButton.classList.add("ships-control-btn--waiting");
+        readyButton.textContent = "Aguardando rival";
+        return;
+    }
+
+    if (!areAllShipsPlaced()) {
+        readyButton.disabled = true;
+        readyButton.textContent = "Posicione todos";
+        return;
+    }
+
+    readyButton.disabled = false;
+    readyButton.textContent = "Pronto";
 }
 
 function showWaitingWarning() {
@@ -89,6 +144,10 @@ if (shipsArea) {
             return;
         }
 
+        if (isPlacementLocked()) {
+            return;
+        }
+
         setTrashMode(false);
         selectShip(ship);
     });
@@ -100,6 +159,11 @@ if (trashModeButton) {
             showWaitingWarning();
             return;
         }
+
+        if (isPlacementLocked()) {
+            return;
+        }
+
         setTrashMode(!isTrashModeActive);
     });
 }
@@ -108,6 +172,10 @@ if (rotateSelectedShipButton) {
     rotateSelectedShipButton.addEventListener("click", () => {
         if (currentGameState?.gameStatus === "WAITING_FOR_PLAYERS") {
             showWaitingWarning();
+            return;
+        }
+
+        if (isPlacementLocked()) {
             return;
         }
 
@@ -273,6 +341,8 @@ function placeShipOnBoard(shipElement, cell) {
         selectedShip = null;
     }
 
+    updateReadyButtonState();
+
     return true;
 }
 
@@ -315,6 +385,8 @@ function removePlacedShip(shipType) {
         shipElement.style.opacity = "";
         selectShip(shipElement);
     }
+
+    updateReadyButtonState();
 
     return true;
 }
@@ -536,16 +608,17 @@ if (!playerName || !gameId) {
 }
 
 function openWebSocket() {
-    const socket = new WebSocket(
+    gameSocket = new WebSocket(
         `ws://localhost:8080/ws/game?gameId=${encodeURIComponent(gameId)}&playerName=${encodeURIComponent(playerName)}`
     );
 
-    socket.addEventListener("open", () => {
+    gameSocket.addEventListener("open", () => {
         socketStatus.textContent = "Conectado";
         console.log("WebSocket conectado");
+        updateReadyButtonState();
     });
 
-    socket.addEventListener("message", event => {
+    gameSocket.addEventListener("message", event => {
         try {
             console.log("Mensagem recebida:", event.data);
 
@@ -558,11 +631,36 @@ function openWebSocket() {
                 return;
             }
 
+            if (data.type === "PLAYER_READY") {
+                if (data.playerName === playerName) {
+                    isPlayerReadyConfirmed = true;
+                    isReadySubmitting = false;
+                }
+                updateReadyButtonState();
+                fetchGameState();
+                return;
+            }
+
+            if (data.type === "GAME_START") {
+                isReadySubmitting = false;
+                isPlayerReadyConfirmed = true;
+                updateReadyButtonState();
+                fetchGameState();
+                return;
+            }
+
             if (data.type === "ATTACK_RESULT") {
                 applyAttackToLocalShips(data);
                 if (currentGameState) {
                     renderHud(currentGameState, playerName);
                 }
+            }
+
+            if (data.type === "ERROR") {
+                isReadySubmitting = false;
+                updateReadyButtonState();
+                console.error("Erro do servidor:", data.message);
+                return;
             }
 
             if (data.gameStatus && data.player1Name && data.player2Name) {
@@ -574,12 +672,14 @@ function openWebSocket() {
         }
     });
 
-    socket.addEventListener("close", () => {
+    gameSocket.addEventListener("close", () => {
         socketStatus.textContent = "Desconectado";
+        updateReadyButtonState();
     });
 
-    socket.addEventListener("error", () => {
+    gameSocket.addEventListener("error", () => {
         socketStatus.textContent = "Erro";
+        updateReadyButtonState();
     });
 }
 
@@ -602,6 +702,11 @@ function buildBoard() {
 
 function renderHud(gameState, displayName) {
     currentGameState = gameState || null;
+
+    if (gameState.gameStatus === "IN_PROGRESS" || gameState.gameStatus === "FINISHED") {
+        isPlayerReadyConfirmed = true;
+        isReadySubmitting = false;
+    }
 
     hudPlayerName.textContent = displayName;
     hudGameId.textContent = gameState.gameId ? `#${gameState.gameId}` : "#-";
@@ -628,6 +733,8 @@ function renderHud(gameState, displayName) {
     if (waitingMessage) {
         waitingMessage.hidden = gameState.gameStatus !== "WAITING_FOR_PLAYERS";
     }
+
+    updateReadyButtonState(gameState.gameStatus);
 
     hudShips.innerHTML = "";
     const ships = getShipsForHud(gameState);
@@ -658,6 +765,52 @@ function renderHud(gameState, displayName) {
             <td>${destroyed}</td>
         `;
         hudShips.appendChild(row);
+    });
+}
+
+function getPlacementOrientation(cells) {
+    if (!Array.isArray(cells) || cells.length < 2) {
+        return "HORIZONTAL";
+    }
+
+    return cells[0].row === cells[1].row ? "HORIZONTAL" : "VERTICAL";
+}
+
+function sendGameMessage(payload) {
+    if (!gameSocket || gameSocket.readyState !== WebSocket.OPEN) {
+        throw new Error("WebSocket nao conectado");
+    }
+
+    gameSocket.send(JSON.stringify(payload));
+}
+
+function sendShipsPlacementAndReady() {
+    if (!areAllShipsPlaced()) {
+        return;
+    }
+
+    for (const [shipType, cells] of placedShips.entries()) {
+        const firstCell = cells[0];
+        if (!firstCell) {
+            continue;
+        }
+
+        sendGameMessage({
+            type: "PLACE_SHIP",
+            gameId,
+            playerName,
+            shipType,
+            size: SHIP_SIZES[shipType],
+            x: firstCell.col,
+            y: firstCell.row,
+            orientation: getPlacementOrientation(cells)
+        });
+    }
+
+    sendGameMessage({
+        type: "PLAYER_READY",
+        gameId,
+        playerName
     });
 }
 
@@ -723,6 +876,10 @@ if (board) {
         }
 
         if (gameStatus === "PLACING_SHIPS") {
+            if (isPlacementLocked()) {
+                return;
+            }
+
             if (isTrashModeActive) {
                 const row = Number(target.dataset.row);
                 const col = Number(target.dataset.col);
@@ -754,6 +911,29 @@ if (board) {
         }
 
         target.classList.toggle("is-selected");
+    });
+}
+
+if (readyButton) {
+    readyButton.addEventListener("click", () => {
+        if (currentGameState?.gameStatus !== "PLACING_SHIPS") {
+            return;
+        }
+
+        if (isPlacementLocked() || !areAllShipsPlaced()) {
+            updateReadyButtonState();
+            return;
+        }
+
+        try {
+            isReadySubmitting = true;
+            updateReadyButtonState();
+            sendShipsPlacementAndReady();
+        } catch (error) {
+            isReadySubmitting = false;
+            console.error("Falha ao enviar status de pronto:", error);
+            updateReadyButtonState();
+        }
     });
 }
 
