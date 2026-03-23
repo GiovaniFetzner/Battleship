@@ -5,7 +5,7 @@ Backend do projeto Battleship, implementado com Spring Boot.
 ## Navegacao
 
 - README principal do repositorio: [../../README.md](../../README.md)
-- README do frontend: [../../battleship_app/readme.MD](../../battleship_app/readme.MD)
+- README do frontend: [../../battleship_app/README.md](../../battleship_app/README.md)
 
 ## Stack
 

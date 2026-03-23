@@ -7,7 +7,7 @@ Projeto de Batalha Naval com backend em Spring Boot e frontend web em JavaScript
 Este README e o principal. Os outros dois detalham cada parte:
 
 - Backend: [battleship_api/battleship/README.md](battleship_api/battleship/README.md)
-- Frontend: [battleship_app/readme.MD](battleship_app/readme.MD)
+- Frontend: [battleship_app/README.md](battleship_app/README.md)
 
 ## Estrutura do repositorio
 
