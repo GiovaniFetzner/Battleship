@@ -114,14 +114,18 @@ function updateBattleUi(gameState) {
     if (battleHint) {
         if (gameState?.gameStatus === "PLACING_SHIPS") {
             battleHint.textContent = "Posicione seus navios no seu grid. O grid do oponente sera liberado na fase de batalha.";
+            if (shipsPlacementHint) shipsPlacementHint.hidden = false;
         } else if (gameState?.gameStatus === "IN_PROGRESS") {
             battleHint.textContent = canAttackNow
                 ? "Sua vez: clique no grid do oponente para atacar."
                 : "Aguarde o turno do adversario para atacar.";
+            if (shipsPlacementHint) shipsPlacementHint.hidden = true;
         } else if (gameState?.gameStatus === "FINISHED") {
             battleHint.textContent = "Partida encerrada.";
+            if (shipsPlacementHint) shipsPlacementHint.hidden = true;
         } else {
             battleHint.textContent = "No ataque: bolinha branca para agua e X destacado para hit.";
+            if (shipsPlacementHint) shipsPlacementHint.hidden = true;
         }
     }
 }
@@ -684,6 +688,7 @@ const phaseTransition = document.getElementById("phaseTransition");
 const phaseTransitionTitle = document.getElementById("phaseTransitionTitle");
 const phaseTransitionSubtitle = document.getElementById("phaseTransitionSubtitle");
 const battleHint = document.getElementById("battleHint");
+const shipsPlacementHint = document.getElementById("shipsPlacementHint");
 let currentGameState = null;
 let lastRenderedGameStatus = null;
 let phaseTransitionTimeoutId = null;
