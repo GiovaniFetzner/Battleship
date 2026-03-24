@@ -3,6 +3,7 @@ package com.example.battleship.controller;
 import com.example.battleship.domain.game.Game;
 import com.example.battleship.dto.rest.inbound.CreateGameRequest;
 import com.example.battleship.dto.rest.inbound.JoinGameRequest;
+import com.example.battleship.dto.rest.outbound.AvailableGameResponse;
 import com.example.battleship.dto.rest.outbound.GameStateResponse;
 import com.example.battleship.dto.webSocket.outbound.GameStateUpdatedResponse;
 import com.example.battleship.mapper.GameMapper;
@@ -10,6 +11,8 @@ import com.example.battleship.service.GameService;
 import com.example.battleship.webSocket.GameEventBroadcaster;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/game")
@@ -25,6 +28,16 @@ public class GameController {
         this.gameService = gameService;
         this.gameMapper = gameMapper;
         this.broadcaster = broadcaster;
+    }
+
+    @GetMapping("/available")
+    public ResponseEntity<List<AvailableGameResponse>> listAvailableGames() {
+        List<AvailableGameResponse> availableGames = gameService.listAvailableGames()
+                .stream()
+                .map(game -> new AvailableGameResponse(game.getId(), game.getPlayer1().getName()))
+                .toList();
+
+        return ResponseEntity.ok(availableGames);
     }
 
     @PostMapping

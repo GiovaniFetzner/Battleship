@@ -30,7 +30,32 @@
             <button id="createGameBtn" type="submit">Entrar</button>
         </form>
         <p id="formStatus" class="form-status" role="status"></p>
+
+        <section class="available-games" aria-labelledby="availableGamesTitle">
+            <div class="available-games-header">
+                <h2 id="availableGamesTitle">Partidas aguardando jogador</h2>
+                <button id="refreshGamesBtn" class="secondary-button" type="button">Atualizar</button>
+            </div>
+            <p id="availableGamesStatus" class="available-games-status" role="status"></p>
+            <ul id="availableGamesList" class="available-games-list"></ul>
+        </section>
     </main>
+
+    <section id="joinRoomModal" class="modal modal--hidden" aria-hidden="true" aria-labelledby="joinRoomModalTitle">
+        <div class="modal-overlay"></div>
+        <div class="modal-container">
+            <div class="modal-content">
+                <h2 id="joinRoomModalTitle" class="modal-title">Entrar na sala</h2>
+                <p id="joinRoomModalGameText" class="modal-message"></p>
+                <input id="joinRoomPlayerName" placeholder="Seu nome" />
+                <div class="modal-actions">
+                    <button id="cancelJoinRoomBtn" class="secondary-button" type="button">Desistir</button>
+                    <button id="confirmJoinRoomBtn" class="modal-button" type="button">Entrar</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <script src="./js/index.js"></script>
 </body>
 

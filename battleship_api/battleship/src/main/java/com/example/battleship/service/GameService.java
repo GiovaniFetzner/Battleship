@@ -70,6 +70,13 @@ public interface GameService {
     List<Game> listActiveGames();
 
     /**
+     * Lista todos os jogos disponíveis para join.
+     * 
+     * @return Lista de jogos que estão aguardando segundo jogador (estado WAITING_FOR_PLAYERS)
+     */
+    List<Game> listAvailableGames();
+
+    /**
      * Deleta um jogo existente usando o código da sala. Isso pode ser usado para limpar jogos antigos ou permitir que os jogadores saiam de um jogo antes de começar.
      * 
      * @param gameId ID do jogo a ser deletado

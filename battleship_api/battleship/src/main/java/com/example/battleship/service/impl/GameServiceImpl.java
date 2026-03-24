@@ -115,6 +115,15 @@ public class GameServiceImpl implements GameService {
     }
 
     @Override
+    public List<Game> listAvailableGames() {
+        return gameRepository.findAll()
+                .values()
+                .stream()
+                .filter(game -> game.getState() == GameState.WAITING_FOR_PLAYERS)
+                .toList();
+    }
+
+    @Override
     public void deleteGame(String gameId) {
 
         getGameOrThrow(gameId);
