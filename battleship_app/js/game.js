@@ -152,13 +152,11 @@ function showGameOverOverlay(gameState, playerName) {
     const isPlayerWinner = winner === playerName;
 
     if (isPlayerWinner) {
-        // Contar navios restantes do jogador vencedor
-        const shipsRemaining = Array.isArray(gameState?.myShips)
-            ? gameState.myShips.filter(ship => ship?.destroyed !== true).length
-            : "-";
+        const ships = getShipsForHud(gameState);
+        const shipsRemaining = getShipsRemainingForHud(gameState, ships);
 
         gameOverTitle.textContent = "Você Venceu!!!";
-        gameOverMessage.textContent = `Barcos restantes: ${shipsRemaining}`;
+        gameOverMessage.textContent = `Barcos restantes: ${shipsRemaining === null ? "-" : shipsRemaining}`;
     } else {
         gameOverTitle.textContent = "Você Perdeu!";
         gameOverMessage.textContent = "";
