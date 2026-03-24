@@ -20,8 +20,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private final GameEventBroadcasterImpl broadcaster;
 
     public GameWebSocketHandler(GameService gameService,
-                                ObjectMapper objectMapper,
-                                GameEventBroadcasterImpl broadcaster) {
+            ObjectMapper objectMapper,
+            GameEventBroadcasterImpl broadcaster) {
         this.gameService = gameService;
         this.objectMapper = objectMapper;
         this.broadcaster = broadcaster;
@@ -61,10 +61,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         System.out.println("sessionId=" + session.getId());
     }
 
-
     @Override
     protected void handleTextMessage(WebSocketSession session,
-                                     TextMessage message) throws Exception {
+            TextMessage message) throws Exception {
 
         GameMessage baseMessage = null;
 
@@ -72,8 +71,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             baseMessage = objectMapper.readValue(
                     message.getPayload(),
-                    GameMessage.class
-            );
+                    GameMessage.class);
 
             if (baseMessage.getType() == null) {
                 throw new IllegalArgumentException("Message type is required");
@@ -82,8 +80,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             broadcaster.register(
                     baseMessage.getGameId(),
                     baseMessage.getPlayerName(),
-                    session
-            );
+                    session);
+
+            // Atualizar tempo da última atividade
+            broadcaster.updateActivityTime(
+                    baseMessage.getGameId(),
+                    baseMessage.getPlayerName());
 
             switch (baseMessage.getType()) {
 
@@ -100,12 +102,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             String gameId = baseMessage != null ? baseMessage.getGameId() : null;
 
-            ErrorResponse error =
-                    new ErrorResponse(gameId, e.getMessage());
+            ErrorResponse error = new ErrorResponse(gameId, e.getMessage());
 
             session.sendMessage(
-                    new TextMessage(objectMapper.writeValueAsString(error))
-            );
+                    new TextMessage(objectMapper.writeValueAsString(error)));
         }
     }
 
@@ -115,24 +115,20 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             throw new IllegalArgumentException("Coordinates are required for ATTACK");
         }
 
-        AttackResult result =
-                gameService.attack(
-                        message.getGameId(),
-                        message.getPlayerName(),
-                        message.getX(),
-                        message.getY()
-                );
+        AttackResult result = gameService.attack(
+                message.getGameId(),
+                message.getPlayerName(),
+                message.getX(),
+                message.getY());
 
-        AttackResultResponse response =
-                new AttackResultResponse(
-                        message.getGameId(),
-                        result,
-                        gameService.getCurrentPlayer(message.getGameId()),
-                        message.getX(),
-                        message.getY(),
-                        gameService.isGameOver(message.getGameId()),
-                        gameService.getWinner(message.getGameId())
-                );
+        AttackResultResponse response = new AttackResultResponse(
+                message.getGameId(),
+                result,
+                gameService.getCurrentPlayer(message.getGameId()),
+                message.getX(),
+                message.getY(),
+                gameService.isGameOver(message.getGameId()),
+                gameService.getWinner(message.getGameId()));
 
         broadcaster.broadcast(message.getGameId(), response);
     }
@@ -155,45 +151,35 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 message.getSize(),
                 message.getX(),
                 message.getY(),
-                message.getOrientation()
-        );
+                message.getOrientation());
 
-        ShipPlacedResponse response =
-                new ShipPlacedResponse(
-                        message.getGameId(),
-                        message.getPlayerName()
-                );
+        ShipPlacedResponse response = new ShipPlacedResponse(
+                message.getGameId(),
+                message.getPlayerName());
 
         broadcaster.broadcast(message.getGameId(), response);
     }
 
     private void handlePlayerReady(GameMessage message) throws Exception {
 
-        boolean bothReady =
-                gameService.confirmPlayerReady(
-                        message.getGameId(),
-                        message.getPlayerName()
-                );
+        boolean bothReady = gameService.confirmPlayerReady(
+                message.getGameId(),
+                message.getPlayerName());
 
-        PlayerReadyResponse response =
-                new PlayerReadyResponse(
-                        message.getGameId(),
-                        message.getPlayerName(),
-                        bothReady
-                );
+        PlayerReadyResponse response = new PlayerReadyResponse(
+                message.getGameId(),
+                message.getPlayerName(),
+                bothReady);
 
         broadcaster.broadcast(message.getGameId(), response);
 
         if (bothReady) {
 
-            String firstPlayer =
-                    gameService.getCurrentPlayer(message.getGameId());
+            String firstPlayer = gameService.getCurrentPlayer(message.getGameId());
 
-            GameStartResponse startResponse =
-                    new GameStartResponse(
-                            message.getGameId(),
-                            firstPlayer
-                    );
+            GameStartResponse startResponse = new GameStartResponse(
+                    message.getGameId(),
+                    firstPlayer);
 
             broadcaster.broadcast(message.getGameId(), startResponse);
         }
@@ -201,7 +187,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session,
-                                      CloseStatus status) {
+            CloseStatus status) {
 
         broadcaster.removeSession(session);
 
