@@ -773,6 +773,16 @@ function openWebSocket() {
                 pendingAttacks.clear();
                 updateReadyButtonState();
                 console.error("Erro do servidor:", data.message);
+                
+                // Se o erro for sobre jogo finalizado, limpar sessionStorage e redirecionar
+                if (data.message && data.message.includes("finalizado")) {
+                    sessionStorage.removeItem("playerName");
+                    sessionStorage.removeItem("gameId");
+                    sessionStorage.removeItem("gameState");
+                    
+                    alert(data.message + "\nSerá redirecionado para a página inicial.");
+                    window.location.href = "index.html";
+                }
                 return;
             }
 
@@ -901,6 +911,15 @@ function renderHud(gameState, displayName) {
     if (gameState.gameStatus === "IN_PROGRESS" || gameState.gameStatus === "FINISHED") {
         isPlayerReadyConfirmed = true;
         isReadySubmitting = false;
+    }
+
+    // Limpar sessionStorage quando o jogo termina
+    if (gameState.gameStatus === "FINISHED") {
+        setTimeout(() => {
+            sessionStorage.removeItem("playerName");
+            sessionStorage.removeItem("gameId");
+            sessionStorage.removeItem("gameState");
+        }, 2000);
     }
 
     hudPlayerName.textContent = displayName;
