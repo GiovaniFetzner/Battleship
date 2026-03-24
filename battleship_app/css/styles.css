@@ -855,3 +855,119 @@ button:hover {
 .board-cell.board-cell--hit::after {
     transform: translate(-50%, -50%) rotate(-45deg);
 }
+
+/* Game Over Overlay */
+.game-over-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.game-over-overlay--hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.game-over-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(13, 27, 42, 0.85);
+    backdrop-filter: blur(6px);
+    z-index: -1;
+}
+
+.game-over-container {
+    position: relative;
+    z-index: 10000;
+    width: min(420px, 90vw);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.game-over-content {
+    padding: 48px 32px;
+    border-radius: 16px;
+    background: rgba(13, 27, 42, 0.95);
+    border: 1px solid rgba(244, 162, 97, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    text-align: center;
+    animation: gameOverSlideIn 0.5s ease both;
+}
+
+.game-over-overlay--hidden .game-over-content {
+    animation: gameOverSlideOut 0.4s ease forwards;
+}
+
+@keyframes gameOverSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.90);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes gameOverSlideOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(0.90);
+    }
+}
+
+.game-over-title {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+}
+
+.game-over-message {
+    margin: 0;
+    font-size: 16px;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.game-over-button {
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, var(--accent), #e76f51);
+    color: var(--bg-1);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(244, 162, 97, 0.3);
+}
+
+.game-over-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(244, 162, 97, 0.4);
+}
+
+.game-over-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(244, 162, 97, 0.2);
+}

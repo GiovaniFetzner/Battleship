@@ -22,6 +22,10 @@ const shipsArea = document.getElementById("shipsArea");
 const rotateSelectedShipButton = document.getElementById("rotateSelectedShip");
 const trashModeButton = document.getElementById("trashModeButton");
 const readyButton = document.getElementById("readyButton");
+const gameOverOverlay = document.getElementById("gameOverOverlay");
+const gameOverTitle = document.getElementById("gameOverTitle");
+const gameOverMessage = document.getElementById("gameOverMessage");
+const gameOverHomeButton = document.getElementById("gameOverHomeButton");
 let selectedShip = null;
 let isTrashModeActive = false;
 let isPlayerReadyConfirmed = false;
@@ -127,6 +131,46 @@ function updateBattleUi(gameState) {
             battleHint.textContent = "No ataque: bolinha branca para agua e X destacado para hit.";
             if (shipsPlacementHint) shipsPlacementHint.hidden = true;
         }
+    }
+}
+
+function disableGameBoards() {
+    if (opponentBoard) {
+        opponentBoard.classList.add("board--disabled");
+    }
+    if (board) {
+        board.classList.add("board--disabled");
+    }
+}
+
+function showGameOverOverlay(gameState, playerName) {
+    if (!gameOverOverlay) {
+        return;
+    }
+
+    const winner = gameState?.winner;
+    const isPlayerWinner = winner === playerName;
+
+    if (isPlayerWinner) {
+        // Contar navios restantes do jogador vencedor
+        const shipsRemaining = Array.isArray(gameState?.myShips)
+            ? gameState.myShips.filter(ship => ship?.destroyed !== true).length
+            : "-";
+
+        gameOverTitle.textContent = "Você Venceu!!!";
+        gameOverMessage.textContent = `Barcos restantes: ${shipsRemaining}`;
+    } else {
+        gameOverTitle.textContent = "Você Perdeu!";
+        gameOverMessage.textContent = "";
+    }
+
+    disableGameBoards();
+    gameOverOverlay.classList.remove("game-over-overlay--hidden");
+}
+
+function hideGameOverOverlay() {
+    if (gameOverOverlay) {
+        gameOverOverlay.classList.add("game-over-overlay--hidden");
     }
 }
 
@@ -773,13 +817,13 @@ function openWebSocket() {
                 pendingAttacks.clear();
                 updateReadyButtonState();
                 console.error("Erro do servidor:", data.message);
-                
+
                 // Se o erro for sobre jogo finalizado, limpar sessionStorage e redirecionar
                 if (data.message && data.message.includes("finalizado")) {
                     sessionStorage.removeItem("playerName");
                     sessionStorage.removeItem("gameId");
                     sessionStorage.removeItem("gameState");
-                    
+
                     alert(data.message + "\nSerá redirecionado para a página inicial.");
                     window.location.href = "index.html";
                 }
@@ -915,11 +959,12 @@ function renderHud(gameState, displayName) {
 
     // Limpar sessionStorage quando o jogo termina
     if (gameState.gameStatus === "FINISHED") {
+        showGameOverOverlay(gameState, displayName);
         setTimeout(() => {
             sessionStorage.removeItem("playerName");
             sessionStorage.removeItem("gameId");
             sessionStorage.removeItem("gameState");
-        }, 2000);
+        }, 5000);
     }
 
     hudPlayerName.textContent = displayName;
@@ -1211,6 +1256,15 @@ if (readyButton) {
             console.error("Falha ao enviar status de pronto:", error);
             updateReadyButtonState();
         }
+    });
+}
+
+if (gameOverHomeButton) {
+    gameOverHomeButton.addEventListener("click", () => {
+        sessionStorage.removeItem("playerName");
+        sessionStorage.removeItem("gameId");
+        sessionStorage.removeItem("gameState");
+        window.location.href = "index.html";
     });
 }
 
