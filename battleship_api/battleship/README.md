@@ -18,6 +18,7 @@ Backend do projeto Battleship, implementado com Spring Boot.
 
 ## O que a API cobre hoje
 
+- Listar jogos disponíveis (em espera de segundo jogador)
 - Criar jogo
 - Entrar em jogo existente
 - Consultar estado por jogador
@@ -46,6 +47,20 @@ Servidor: http://localhost:8080
 ## REST API
 
 Base path: /api/game
+
+### Listar jogos disponíveis
+
+- Metodo: GET /api/game/available
+- Retorno:
+
+```json
+[
+  {
+    "gameId": "uuid-aqui",
+    "createdByPlayer": "Player1"
+  }
+]
+```
 
 ### Criar jogo
 

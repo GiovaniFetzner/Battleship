@@ -24,6 +24,7 @@ battleship/
 
 ## Funcionalidades atuais
 
+- Listagem de salas disponíveis (em espera)
 - Criacao de sala e entrada de segundo jogador via REST
 - Fases da partida: espera, posicionamento, batalha e fim
 - Posicionamento de navios no cliente e envio ao backend

@@ -34,11 +34,13 @@ battleship_app/
 
 ### index.html
 
+- Carrega lista de jogos disponíveis via GET /api/game/available
+- Exibe salas aguardando segundo jogador com ID e criador
 - Usuario informa playerName
-- Pode informar gameId para entrar em sala existente
-- Chama backend REST:
-  - POST /api/game para criar jogo
-  - POST /api/game/{gameId}/join para entrar
+- Pode:
+  - Criar nova sala (POST /api/game)
+  - Selecionar sala existente com confirmação modal (POST /api/game/{gameId}/join)
+  - Atualizar lista de salas disponíveis
 - Salva playerName, gameId e gameState inicial no sessionStorage
 
 ### game.html
@@ -54,7 +56,10 @@ battleship_app/
 
 ## Recursos de UX atuais
 
-- Indicador de status do WebSocket
+- Listagem de salas disponíveis com atualização em tempo real
+- Modal de confirmação para entrada em salas existentes
+- Botao para atualizar lista de salas disponíveis
+- Indicador de status do WebSocket (na página de jogo)
 - HUD de turno, status da partida, ataques e navios
 - Transicao visual entre fases
 - Botao para copiar gameId
