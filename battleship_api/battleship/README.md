@@ -4,7 +4,7 @@ Backend do projeto Battleship, implementado com Spring Boot.
 
 ## Navegacao
 
-- README principal do repositorio: [../../README.md](../../README.md)
+- README principal: [../../README.md](../../README.md)
 - README do frontend: [../../battleship_app/README.md](../../battleship_app/README.md)
 
 ## Stack
@@ -16,40 +16,40 @@ Backend do projeto Battleship, implementado com Spring Boot.
 - Maven
 - JUnit 5 (spring-boot-starter-test)
 
-## O que já está implementado
+## O que a API cobre hoje
 
-- Criacao de jogo via REST
-- Entrada de segundo jogador via REST
-- Consulta de estado do jogo via REST
-- Canal WebSocket para mensagens de jogo
-- Regras de dominio (turno, ataque, vitoria, posicionamento)
-- Repositorio em memoria para jogos ativos
+- Criar jogo
+- Entrar em jogo existente
+- Consultar estado por jogador
+- Receber e processar mensagens de partida via WebSocket
+- Regras de dominio (turno, ataque, destruicao e vitoria)
+- Armazenamento em memoria para partidas ativas
 
 ## Como executar
 
-No Windows:
+Windows:
 
 ```bash
 cd battleship_api/battleship
 mvnw.cmd spring-boot:run
 ```
 
-Alternativa Linux/macOS:
+Linux/macOS:
 
 ```bash
 cd battleship_api/battleship
 ./mvnw spring-boot:run
 ```
 
-Servidor HTTP: http://localhost:8080
+Servidor: http://localhost:8080
 
-## API REST atual
+## REST API
 
-Base path: `/api/game`
+Base path: /api/game
 
 ### Criar jogo
 
-- Metodo: `POST /api/game`
+- Metodo: POST /api/game
 - Body:
 
 ```json
@@ -60,7 +60,7 @@ Base path: `/api/game`
 
 ### Entrar no jogo
 
-- Metodo: `POST /api/game/{gameId}/join`
+- Metodo: POST /api/game/{gameId}/join
 - Body:
 
 ```json
@@ -71,13 +71,13 @@ Base path: `/api/game`
 
 ### Consultar estado
 
-- Metodo: `GET /api/game/{gameId}?playerName=Player1`
+- Metodo: GET /api/game/{gameId}?playerName=Player1
 
-## WebSocket atual
+## WebSocket
 
-- Endpoint: `ws://localhost:8080/ws/game?gameId=<id>&playerName=<nome>`
+- Endpoint: ws://localhost:8080/ws/game?gameId=<id>&playerName=<nome>
 
-### Mensagens inbound aceitas
+### Mensagens inbound
 
 Campos comuns:
 
@@ -89,7 +89,7 @@ Campos comuns:
 }
 ```
 
-#### ATTACK
+ATTACK:
 
 ```json
 {
@@ -101,14 +101,14 @@ Campos comuns:
 }
 ```
 
-#### PLACE_SHIP
+PLACE_SHIP:
 
 ```json
 {
   "type": "PLACE_SHIP",
   "gameId": "<id>",
   "playerName": "Player1",
-  "shipType": "battleship",
+  "shipType": "bombardeiro",
   "size": 4,
   "x": 0,
   "y": 0,
@@ -116,7 +116,7 @@ Campos comuns:
 }
 ```
 
-#### PLAYER_READY
+PLAYER_READY:
 
 ```json
 {
@@ -126,28 +126,34 @@ Campos comuns:
 }
 ```
 
-### Eventos outbound do backend
+### Eventos outbound
 
-- `ATTACK_RESULT`
-- `GAME_STATE_UPDATED`
-- `PLAYER_READY`
-- `GAME_START`
-- `SHIP_PLACED`
-- `ERROR`
+- ATTACK_RESULT
+- GAME_STATE_UPDATED
+- PLAYER_READY
+- GAME_START
+- SHIP_PLACED
+- ERROR
 
-## CORS e integracao com frontend
+## Integracao com frontend
 
-- CORS permitido para `http://localhost:3000`
-- Frontend esperado em: [../../battleship_app/readme.MD](../../battleship_app/readme.MD)
+- CORS HTTP liberado para http://localhost:3000
+- WebSocket registrado em /ws/game
+- Frontend esperado em [../../battleship_app/README.md](../../battleship_app/README.md)
 
 ## Testes
 
-Executar testes:
+Windows:
 
 ```bash
 cd battleship_api/battleship
 mvnw.cmd clean test
 ```
 
-Ultimo resultado local desta atualizacao: 75 testes, 0 falhas, 0 erros, 0 ignorados.
+Linux/macOS:
+
+```bash
+cd battleship_api/battleship
+./mvnw clean test
+```
 

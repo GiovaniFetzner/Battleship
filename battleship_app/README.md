@@ -4,7 +4,7 @@ Frontend web do projeto Battleship, em HTML, CSS e JavaScript puro.
 
 ## Navegacao
 
-- README principal do repositorio: [../README.md](../README.md)
+- README principal: [../README.md](../README.md)
 - README do backend: [../battleship_api/battleship/README.md](../battleship_api/battleship/README.md)
 
 ## Stack
@@ -13,6 +13,7 @@ Frontend web do projeto Battleship, em HTML, CSS e JavaScript puro.
 - CSS3
 - JavaScript (vanilla)
 - WebSocket API (browser)
+- serve (dev server local)
 
 ## Estrutura
 
@@ -33,39 +34,31 @@ battleship_app/
 
 ### index.html
 
-- Usuario informa `playerName`
-- Opcionalmente informa `gameId` para entrar em sala existente
-- O frontend chama o backend REST:
-    - `POST /api/game` para criar jogo
-    - `POST /api/game/{gameId}/join` para entrar no jogo
-- `playerName`, `gameId` e estado inicial ficam no `sessionStorage`
+- Usuario informa playerName
+- Pode informar gameId para entrar em sala existente
+- Chama backend REST:
+  - POST /api/game para criar jogo
+  - POST /api/game/{gameId}/join para entrar
+- Salva playerName, gameId e gameState inicial no sessionStorage
 
 ### game.html
 
-- Le os dados do `sessionStorage`
-- Abre WebSocket em:
-    - `ws://localhost:8080/ws/game?gameId=<id>&playerName=<nome>`
-- Renderiza HUD com status da sala e informacoes do jogador
-- Renderiza tabuleiro 10x10
-- Permite posicionamento visual de navios no cliente:
-    - selecao de navio
-    - rotacao
-    - remocao pelo modo lixeira
-- Ao receber evento de estado, consulta o estado via REST para sincronizar HUD
+- Le dados do sessionStorage
+- Abre WebSocket em ws://localhost:8080/ws/game?gameId=<id>&playerName=<nome>
+- Renderiza HUD e dois tabuleiros 10x10 (jogador e oponente)
+- Permite posicionar navios com selecao, rotacao e remocao
+- Envia posicionamentos via PLACE_SHIP e confirma pronto via PLAYER_READY
+- Envia ataques no tabuleiro do oponente via ATTACK
+- Processa eventos ATTACK_RESULT, PLAYER_READY, GAME_START, GAME_STATE_UPDATED e ERROR
+- Sincroniza estado detalhado via GET /api/game/{gameId}?playerName=<nome>
 
-## O que ja esta pronto
+## Recursos de UX atuais
 
-- Criar ou entrar em sala pela interface
-- Navegacao de index para game
-- Layout da sala com HUD
-- Tabuleiro funcional para interacao visual
-- Conexao e leitura de eventos WebSocket
-
-## O que ainda falta integrar com backend
-
-- Enviar ataque real para o backend via WebSocket (`ATTACK`)
-- Enviar posicionamento de navios via WebSocket (`PLACE_SHIP`)
-- Enviar pronto para iniciar partida (`PLAYER_READY`)
+- Indicador de status do WebSocket
+- HUD de turno, status da partida, ataques e navios
+- Transicao visual entre fases
+- Botao para copiar gameId
+- Overlay de fim de jogo com redirecionamento para inicio
 
 ## Como executar
 
@@ -75,9 +68,9 @@ npm install
 npm run dev
 ```
 
-Aplicacao em: http://localhost:3000
+Aplicacao: http://localhost:3000
 
-## Requisito para funcionamento completo
+## Dependencia do backend
 
-Backend deve estar em execucao em http://localhost:8080.
-Consulte os contratos de API em [../battleship_api/battleship/README.md](../battleship_api/battleship/README.md).
+Para fluxo completo, o backend deve estar ativo em http://localhost:8080.
+Contratos de API: [../battleship_api/battleship/README.md](../battleship_api/battleship/README.md)

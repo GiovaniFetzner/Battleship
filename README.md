@@ -1,56 +1,55 @@
 # Battleship
 
-Projeto de Batalha Naval com backend em Spring Boot e frontend web em JavaScript.
+Projeto de Batalha Naval com backend em Spring Boot e frontend web em JavaScript puro.
 
-## READMEs do projeto
-
-Este README e o principal. Os outros dois detalham cada parte:
+## Documentacao do projeto
 
 - Backend: [battleship_api/battleship/README.md](battleship_api/battleship/README.md)
 - Frontend: [battleship_app/README.md](battleship_app/README.md)
 
-## Estrutura do repositorio
+## Estrutura
 
 ```text
 battleship/
 |- battleship_api/
-|  |- battleship/          # Backend Spring Boot
-|- battleship_app/         # Frontend HTML/CSS/JS
+|  |- battleship/          # API Spring Boot
+|- battleship_app/         # App web HTML/CSS/JS
 |- README.md               # Visao geral
 ```
 
-## Estado atual
+## Stack
 
-### Backend
+- Backend: Java 17, Spring Boot 3.2.2, Maven, WebSocket
+- Frontend: HTML5, CSS3, JavaScript (vanilla), WebSocket API
 
-- Java 17 + Spring Boot 3.2.2
-- REST para criar jogo, entrar no jogo e consultar estado
-- WebSocket para eventos em tempo real
-- Dominio do jogo implementado e repositorio em memoria
-- Testes automatizados passando
+## Funcionalidades atuais
 
-### Frontend
-
-- Tela de entrada para criar/entrar em sala
-- Tela de jogo com HUD e tabuleiro 10x10
-- Posicionamento visual de navios no tabuleiro
-- Conexao WebSocket e atualizacao de estado
-
-### Integracao ainda pendente no frontend
-
-- Envio de ataques para o backend via WebSocket
-- Envio de posicionamento de navios e sinalizacao de pronto via WebSocket
+- Criacao de sala e entrada de segundo jogador via REST
+- Fases da partida: espera, posicionamento, batalha e fim
+- Posicionamento de navios no cliente e envio ao backend
+- Sinalizacao de jogador pronto
+- Ataques em tempo real com retorno de HIT/MISS via WebSocket
+- HUD com estado da partida, turno, navios e placar de ataques
 
 ## Como executar
 
 ### 1. Subir backend
+
+Windows:
 
 ```bash
 cd battleship_api/battleship
 mvnw.cmd spring-boot:run
 ```
 
-Backend em http://localhost:8080.
+Linux/macOS:
+
+```bash
+cd battleship_api/battleship
+./mvnw spring-boot:run
+```
+
+Backend: http://localhost:8080
 
 ### 2. Subir frontend
 
@@ -60,18 +59,10 @@ npm install
 npm run dev
 ```
 
-Frontend em http://localhost:3000.
+Frontend: http://localhost:3000
 
-## Tecnologias
+## Estado atual
 
-- Backend: Java 17, Spring Boot 3.2.2, Spring Web, Spring WebSocket, Maven, JUnit 5
-- Frontend: HTML5, CSS3, JavaScript (vanilla), WebSocket API
-
-## Objetivo
-
-Projeto de estudo e portfolio com foco em:
-
-- modelagem de dominio
-- regras de jogo no servidor
-- comunicacao em tempo real
-- separacao de responsabilidades entre backend e frontend
+- Projeto funcional para fluxo completo de partida local (2 jogadores)
+- Persistencia em memoria no backend (sem banco de dados)
+- Foco em estudo de dominio, regras de jogo e comunicacao em tempo real
