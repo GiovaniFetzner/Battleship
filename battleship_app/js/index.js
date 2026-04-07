@@ -12,7 +12,7 @@ const joinRoomPlayerName = document.getElementById("joinRoomPlayerName");
 const confirmJoinRoomBtn = document.getElementById("confirmJoinRoomBtn");
 const cancelJoinRoomBtn = document.getElementById("cancelJoinRoomBtn");
 
-const API_BASE_URL = "http://localhost:8080/api/game";
+const API_BASE_URL = window.BattleshipConfig.resolveApiBaseUrl();
 
 let isSubmitting = false;
 let pendingJoinGameId = "";
@@ -105,7 +105,7 @@ async function fetchAvailableGames() {
     refreshGamesBtn.disabled = true;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/available`);
+        const response = await fetch(window.BattleshipConfig.resolveApiUrl("available"));
 
         if (!response.ok) {
             throw new Error("Erro ao buscar partidas disponíveis");

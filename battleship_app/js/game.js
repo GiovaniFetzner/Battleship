@@ -850,7 +850,10 @@ if (!playerName || !gameId) {
 
 function openWebSocket() {
     gameSocket = new WebSocket(
-        `ws://localhost:8080/ws/game?gameId=${encodeURIComponent(gameId)}&playerName=${encodeURIComponent(playerName)}`
+        window.BattleshipConfig.resolveWebSocketUrl("/ws/game", {
+            gameId,
+            playerName
+        })
     );
 
     gameSocket.addEventListener("open", () => {
@@ -1367,7 +1370,7 @@ if (gameOverHomeButton) {
 async function fetchGameState() {
     try {
         const response = await fetch(
-            `http://localhost:8080/api/game/${gameId}?playerName=${playerName}`
+            `${window.BattleshipConfig.resolveApiUrl(gameId)}?playerName=${encodeURIComponent(playerName)}`
         );
 
         if (!response.ok) {

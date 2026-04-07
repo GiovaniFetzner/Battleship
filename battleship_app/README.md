@@ -44,7 +44,7 @@ battleship_app/
 ### game.html
 
 - Le dados do sessionStorage
-- Abre WebSocket em ws://localhost:8080/ws/game?gameId=<id>&playerName=<nome>
+- Abre WebSocket na mesma origem da aplicacao, usando ws:// ou wss:// conforme o protocolo atual
 - Renderiza HUD e dois tabuleiros 10x10 (jogador e oponente)
 - Permite posicionar navios com selecao, rotacao e remocao
 - Envia posicionamentos via PLACE_SHIP e confirma pronto via PLAYER_READY
@@ -72,5 +72,7 @@ Aplicacao: http://localhost:3000
 
 ## Dependencia do backend
 
-Para fluxo completo, o backend deve estar ativo em http://localhost:8080.
+Por padrao, o frontend usa a mesma origem do navegador para chamar /api/game e /ws/game.
+No modo local, isso continua apontando para http://localhost:8080 quando a aplicacao estiver em localhost.
+Se necessario, a base da API pode ser sobrescrita via window.BATTLESHIP_API_BASE_URL.
 Contratos de API: [../battleship_api/battleship/README.md](../battleship_api/battleship/README.md)
