@@ -14,6 +14,7 @@ public class Board {
     private final List<Ship> ships = new ArrayList<>();
 
     private static final int REQUIRED_SHIPS = 4;
+    private static final int REQUIRED_SHIP_CELLS = 14;
 
     public Board(int width, int height) {
         this.width = width;
@@ -30,9 +31,11 @@ public class Board {
         }
     }
 
-    /* =============================
-       SHIP PLACEMENT
-       ============================= */
+    /*
+     * =============================
+     * SHIP PLACEMENT
+     * =============================
+     */
 
     public void placeShip(Ship ship, Coordinate coordinate, Orientation orientation) {
 
@@ -76,12 +79,24 @@ public class Board {
     }
 
     public boolean hasRequiredShipsPlaced() {
-        return ships.size() == REQUIRED_SHIPS;
+        int occupiedCells = 0;
+
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                if (cells[x][y].hasShip()) {
+                    occupiedCells++;
+                }
+            }
+        }
+
+        return occupiedCells == REQUIRED_SHIP_CELLS;
     }
 
-    /* =============================
-       BATTLE
-       ============================= */
+    /*
+     * =============================
+     * BATTLE
+     * =============================
+     */
 
     public AttackResult attack(Coordinate coordinate) {
 
@@ -106,9 +121,11 @@ public class Board {
                 .allMatch(Ship::isDestroyed);
     }
 
-    /* =============================
-       VALIDATION
-       ============================= */
+    /*
+     * =============================
+     * VALIDATION
+     * =============================
+     */
 
     private void validatePosition(Coordinate coordinate) {
         if (coordinate.x() < 0 || coordinate.x() >= width ||

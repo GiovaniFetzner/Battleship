@@ -13,12 +13,24 @@ import java.util.UUID;
 
 public interface GameJpaRepository extends JpaRepository<GameEntity, UUID> {
 
-    @EntityGraph(attributePaths = { "players", "players.board" })
+    @EntityGraph(attributePaths = {
+            "players",
+            "players.board",
+            "players.board.shipCells",
+            "players.board.hitCells",
+            "players.board.missCells"
+    })
     @Query("select g from GameEntity g where g.id = :id")
     Optional<GameEntity> findAggregateById(@Param("id") UUID id);
 
     @Lock(LockModeType.OPTIMISTIC)
-    @EntityGraph(attributePaths = { "players", "players.board" })
+    @EntityGraph(attributePaths = {
+            "players",
+            "players.board",
+            "players.board.shipCells",
+            "players.board.hitCells",
+            "players.board.missCells"
+    })
     @Query("select g from GameEntity g where g.id = :id")
     Optional<GameEntity> findAggregateWithOptimisticLock(@Param("id") UUID id);
 }

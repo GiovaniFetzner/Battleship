@@ -20,7 +20,9 @@ import com.example.battleship.repository.jpa.GameJpaRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayDeque;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -64,6 +66,7 @@ public class JpaGameRepository implements GameRepository {
     }
 
     @Override
+    @Transactional
     public void save(Game game) {
         GameSnapshotDto snapshot = toSnapshot(game);
         GameEntity entity = springDataRepository.findAggregateById(snapshot.getId())
@@ -78,6 +81,7 @@ public class JpaGameRepository implements GameRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Game> findById(String gameId) {
         return resolveUuid(gameId)
                 .flatMap(springDataRepository::findAggregateById)
@@ -86,12 +90,14 @@ public class JpaGameRepository implements GameRepository {
     }
 
     @Override
+    @Transactional
     public void deleteById(String gameId) {
         resolveUuid(gameId).ifPresent(springDataRepository::deleteById);
         gameIdsByString.remove(gameId);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Map<String, Game> findAll() {
         Map<String, Game> result = new HashMap<>();
         for (GameEntity entity : springDataRepository.findAll()) {
@@ -242,15 +248,29 @@ public class JpaGameRepository implements GameRepository {
 
         ships.clear();
 
-        if (boardSnapshot.getShipCells() != null) {
-            for (CoordinateSnapshotDto coordinate : boardSnapshot.getShipCells()) {
-                int x = coordinate.x();
-                int y = coordinate.y();
-                Cell cell = cells[x][y];
-                Ship ship = new Ship("persisted", 1);
+        Set<CoordinateSnapshotDto> shipCells = boardSnapshot.getShipCells() != null
+                ? new HashSet<>(boardSnapshot.getShipCells())
+                : new HashSet<>();
+        Set<CoordinateSnapshotDto> hitCells = boardSnapshot.getHitCells() != null
+                ? new HashSet<>(boardSnapshot.getHitCells())
+                : new HashSet<>();
+
+        for (Set<CoordinateSnapshotDto> shipComponent : groupShipComponents(shipCells)) {
+            Ship ship = new Ship("persisted", shipComponent.size());
+
+            for (CoordinateSnapshotDto coordinate : shipComponent) {
+                Cell cell = cells[coordinate.x()][coordinate.y()];
                 setField(CELL_SHIP_FIELD, cell, ship);
-                ships.add(ship);
             }
+
+            long hitCount = shipComponent.stream()
+                    .filter(hitCells::contains)
+                    .count();
+            for (int i = 0; i < hitCount; i += 1) {
+                ship.hit();
+            }
+
+            ships.add(ship);
         }
 
         if (boardSnapshot.getMissCells() != null) {
@@ -264,16 +284,45 @@ public class JpaGameRepository implements GameRepository {
             for (CoordinateSnapshotDto coordinate : boardSnapshot.getHitCells()) {
                 Cell cell = cells[coordinate.x()][coordinate.y()];
                 setField(CELL_ATTACKED_FIELD, cell, true);
-                Object shipObj = getField(CELL_SHIP_FIELD, cell);
-                if (shipObj == null) {
-                    Ship ship = new Ship("persisted", 1);
-                    setField(CELL_SHIP_FIELD, cell, ship);
-                    ships.add(ship);
-                    shipObj = ship;
-                }
-                setField(SHIP_HITS_FIELD, shipObj, 1);
             }
         }
+    }
+
+    private List<Set<CoordinateSnapshotDto>> groupShipComponents(Set<CoordinateSnapshotDto> shipCells) {
+        List<Set<CoordinateSnapshotDto>> components = new ArrayList<>();
+        Set<CoordinateSnapshotDto> remaining = new HashSet<>(shipCells);
+
+        while (!remaining.isEmpty()) {
+            CoordinateSnapshotDto start = remaining.iterator().next();
+            Set<CoordinateSnapshotDto> component = new HashSet<>();
+            ArrayDeque<CoordinateSnapshotDto> queue = new ArrayDeque<>();
+            queue.add(start);
+            remaining.remove(start);
+
+            while (!queue.isEmpty()) {
+                CoordinateSnapshotDto current = queue.removeFirst();
+                component.add(current);
+
+                for (CoordinateSnapshotDto neighbor : neighbors(current)) {
+                    if (remaining.remove(neighbor)) {
+                        queue.add(neighbor);
+                    }
+                }
+            }
+
+            components.add(component);
+        }
+
+        return components;
+    }
+
+    private List<CoordinateSnapshotDto> neighbors(CoordinateSnapshotDto coordinate) {
+        List<CoordinateSnapshotDto> neighbors = new ArrayList<>(4);
+        neighbors.add(new CoordinateSnapshotDto(coordinate.x() - 1, coordinate.y()));
+        neighbors.add(new CoordinateSnapshotDto(coordinate.x() + 1, coordinate.y()));
+        neighbors.add(new CoordinateSnapshotDto(coordinate.x(), coordinate.y() - 1));
+        neighbors.add(new CoordinateSnapshotDto(coordinate.x(), coordinate.y() + 1));
+        return neighbors;
     }
 
     private Optional<UUID> resolveUuid(String gameId) {
