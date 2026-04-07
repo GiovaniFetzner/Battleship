@@ -2,6 +2,7 @@ package com.example.battleship.repository.impl;
 
 import com.example.battleship.domain.game.Game;
 import com.example.battleship.repository.GameRepository;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.util.Map;
@@ -9,6 +10,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
+@Profile("dev")
 public class InMemoryGameRepository implements GameRepository {
 
     private final Map<String, Game> games = new ConcurrentHashMap<>();
