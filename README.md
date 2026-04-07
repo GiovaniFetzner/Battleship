@@ -33,25 +33,43 @@ battleship/
 
 ## Como executar
 
-### 1. Subir backend
+### Opcao 1: Com Docker (Recomendado para produção)
+
+```bash
+# Iniciar PostgreSQL + API
+docker-compose up -d
+
+# Frontend
+cd battleship_app
+npm install
+npm run dev
+```
+
+Backend: http://localhost:8080
+Frontend: http://localhost:3000
+
+
+### Opcao 2: Sem Docker (Desenvolvimento local)
+
+#### 1. Subir backend
 
 Windows:
 
 ```bash
 cd battleship_api/battleship
-mvnw.cmd spring-boot:run
+mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 Linux/macOS:
 
 ```bash
 cd battleship_api/battleship
-./mvnw spring-boot:run
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 Backend: http://localhost:8080
 
-### 2. Subir frontend
+#### 2. Subir frontend
 
 ```bash
 cd battleship_app
