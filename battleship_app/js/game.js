@@ -438,35 +438,7 @@ function placeShipOnBoard(shipElement, cell) {
         return false;
     }
 
-    const boardRect = board.getBoundingClientRect();
-    const firstRect = firstCell.getBoundingClientRect();
-    const lastRect = lastCell.getBoundingClientRect();
-
-    const overlay = document.createElement("div");
-    overlay.className = `board-ship board-ship--${orientation}`;
-    overlay.setAttribute("data-ship", shipType);
-    overlay.style.left = `${firstRect.left - boardRect.left}px`;
-    overlay.style.top = `${firstRect.top - boardRect.top}px`;
-    const overlayWidth = lastRect.right - firstRect.left;
-    const overlayHeight = lastRect.bottom - firstRect.top;
-
-    overlay.style.width = `${overlayWidth}px`;
-    overlay.style.height = `${overlayHeight}px`;
-
-    const shipImage = document.createElement("img");
-    shipImage.className = "board-ship-image";
-    shipImage.src = shipElement.getAttribute("src") || "";
-    shipImage.alt = "";
-    shipImage.setAttribute("aria-hidden", "true");
-    shipImage.draggable = false;
-    if (orientation === "vertical") {
-        shipImage.classList.add("board-ship-image--vertical");
-        shipImage.style.width = `${overlayHeight}px`;
-        shipImage.style.height = `${overlayWidth}px`;
-    }
-    overlay.appendChild(shipImage);
-
-    board.appendChild(overlay);
+    renderShipOverlay(shipElement, shipType, targetCells, orientation);
 
     targetCells.forEach(targetCell => {
         occupiedCells.add(cellKey(targetCell.row, targetCell.col));
@@ -489,6 +461,54 @@ function placeShipOnBoard(shipElement, cell) {
     updateReadyButtonState();
 
     return true;
+}
+
+function renderShipOverlay(shipElement, shipType, targetCells, orientation) {
+    if (!board || !shipElement || !shipType || !Array.isArray(targetCells) || targetCells.length === 0) {
+        return;
+    }
+
+    const firstCell = getBoardCell(targetCells[0].row, targetCells[0].col);
+    const lastCell = getBoardCell(
+        targetCells[targetCells.length - 1].row,
+        targetCells[targetCells.length - 1].col
+    );
+
+    if (!firstCell || !lastCell) {
+        return;
+    }
+
+    const boardRect = board.getBoundingClientRect();
+    const firstRect = firstCell.getBoundingClientRect();
+    const lastRect = lastCell.getBoundingClientRect();
+
+    const overlay = document.createElement("div");
+    overlay.className = `board-ship board-ship--${orientation}`;
+    overlay.setAttribute("data-ship", shipType);
+    overlay.style.left = `${firstRect.left - boardRect.left}px`;
+    overlay.style.top = `${firstRect.top - boardRect.top}px`;
+
+    const overlayWidth = lastRect.right - firstRect.left;
+    const overlayHeight = lastRect.bottom - firstRect.top;
+
+    overlay.style.width = `${overlayWidth}px`;
+    overlay.style.height = `${overlayHeight}px`;
+
+    const shipImage = document.createElement("img");
+    shipImage.className = "board-ship-image";
+    shipImage.src = shipElement.getAttribute("src") || "";
+    shipImage.alt = "";
+    shipImage.setAttribute("aria-hidden", "true");
+    shipImage.draggable = false;
+
+    if (orientation === "vertical") {
+        shipImage.classList.add("board-ship-image--vertical");
+        shipImage.style.width = `${overlayHeight}px`;
+        shipImage.style.height = `${overlayWidth}px`;
+    }
+
+    overlay.appendChild(shipImage);
+    board.appendChild(overlay);
 }
 
 function getPlacedShipTypeByCell(row, col) {
@@ -590,9 +610,31 @@ function getLocalShipsStorageKey() {
     return `localShipsState:${gameId}:${playerName}`;
 }
 
+function getReadyConfirmedStorageKey() {
+    return `readyConfirmed:${gameId}:${playerName}`;
+}
+
 function persistLocalShipsState() {
     const payload = Array.from(localShipsState.values());
     sessionStorage.setItem(getLocalShipsStorageKey(), JSON.stringify(payload));
+}
+
+function persistReadyConfirmedState() {
+    if (isPlayerReadyConfirmed) {
+        sessionStorage.setItem(getReadyConfirmedStorageKey(), "1");
+        return;
+    }
+
+    sessionStorage.removeItem(getReadyConfirmedStorageKey());
+}
+
+function hydrateReadyConfirmedState() {
+    isPlayerReadyConfirmed = sessionStorage.getItem(getReadyConfirmedStorageKey()) === "1";
+}
+
+function clearReadyConfirmedState() {
+    isPlayerReadyConfirmed = false;
+    sessionStorage.removeItem(getReadyConfirmedStorageKey());
 }
 
 function hydrateLocalShipsState() {
@@ -627,6 +669,49 @@ function hydrateLocalShipsState() {
     } catch (error) {
         console.error("Falha ao restaurar estado local de navios:", error);
     }
+}
+
+function restorePlacedShipsFromLocalState() {
+    if (!board) {
+        return;
+    }
+
+    board.querySelectorAll(".board-ship").forEach(overlay => overlay.remove());
+    board.querySelectorAll(".board-cell.has-ship").forEach(cell => cell.classList.remove("has-ship"));
+
+    occupiedCells.clear();
+    placedShips.clear();
+
+    for (const ship of localShipsState.values()) {
+        if (!ship.placed || !Array.isArray(ship.cells) || ship.cells.length === 0) {
+            continue;
+        }
+
+        const shipElement = shipsArea?.querySelector(`.ship-img[data-ship="${ship.key}"]`);
+        if (!(shipElement instanceof HTMLElement)) {
+            continue;
+        }
+
+        const targetCells = ship.cells.map(cell => ({ row: cell.row, col: cell.col }));
+        const orientation = getPlacementOrientation(targetCells);
+
+        placedShips.set(ship.key, targetCells);
+        targetCells.forEach(targetCell => {
+            occupiedCells.add(cellKey(targetCell.row, targetCell.col));
+            const segment = getBoardCell(targetCell.row, targetCell.col);
+            if (segment) {
+                segment.classList.add("has-ship");
+            }
+        });
+
+        renderShipOverlay(shipElement, ship.key, targetCells, orientation.toLowerCase());
+        shipElement.dataset.placed = "true";
+        shipElement.style.opacity = 0.5;
+        shipElement.classList.remove("ship-img--selected");
+    }
+
+    selectedShip = null;
+    updateReadyButtonState(currentGameState?.gameStatus);
 }
 
 function applyAttackToLocalShips(eventData) {
@@ -746,8 +831,10 @@ const savedState = sessionStorage.getItem("gameState");
 if (!playerName || !gameId) {
     window.location.href = "index.html";
 } else {
+    hydrateReadyConfirmedState();
     hydrateLocalShipsState();
     buildBoard();
+    restorePlacedShipsFromLocalState();
 
     if (savedState) {
         try {
@@ -789,6 +876,7 @@ function openWebSocket() {
                 if (data.playerName === playerName) {
                     isPlayerReadyConfirmed = true;
                     isReadySubmitting = false;
+                    persistReadyConfirmedState();
                 }
                 updateReadyButtonState();
                 fetchGameState();
@@ -798,6 +886,7 @@ function openWebSocket() {
             if (data.type === "GAME_START") {
                 isReadySubmitting = false;
                 isPlayerReadyConfirmed = true;
+                persistReadyConfirmedState();
                 updateReadyButtonState();
                 fetchGameState();
                 return;
@@ -813,6 +902,11 @@ function openWebSocket() {
             if (data.type === "ERROR") {
                 isReadySubmitting = false;
                 pendingAttacks.clear();
+
+                if (typeof data.message === "string" && data.message.includes("Not all required ships were placed")) {
+                    clearReadyConfirmedState();
+                }
+
                 updateReadyButtonState();
                 console.error("Erro do servidor:", data.message);
 
@@ -953,6 +1047,7 @@ function renderHud(gameState, displayName) {
     if (gameState.gameStatus === "IN_PROGRESS" || gameState.gameStatus === "FINISHED") {
         isPlayerReadyConfirmed = true;
         isReadySubmitting = false;
+        persistReadyConfirmedState();
     }
 
     // Limpar sessionStorage quando o jogo termina
@@ -962,6 +1057,7 @@ function renderHud(gameState, displayName) {
             sessionStorage.removeItem("playerName");
             sessionStorage.removeItem("gameId");
             sessionStorage.removeItem("gameState");
+            sessionStorage.removeItem(getReadyConfirmedStorageKey());
         }, 5000);
     }
 
@@ -1262,6 +1358,7 @@ if (gameOverHomeButton) {
         sessionStorage.removeItem("playerName");
         sessionStorage.removeItem("gameId");
         sessionStorage.removeItem("gameState");
+        sessionStorage.removeItem(getReadyConfirmedStorageKey());
         window.location.href = "index.html";
     });
 }
