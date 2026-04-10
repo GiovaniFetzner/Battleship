@@ -101,17 +101,20 @@ class GameServiceImplTest {
     @Test
     void shouldAttack() {
 
-        // Prepare game with both players and placed ships
+        // Prepare game with both players and place the required fleet (5+4+3+2 = 14
+        // cells)
         game.addPlayer2(new Player("player2"));
         when(gameRepository.findById("1")).thenReturn(Optional.of(game));
 
-        // Place required ships for both players via service so hasRequiredShipsPlaced becomes true
-        for (int i = 0; i < 4; i++) {
-            int x1 = i * 2; // space ships to avoid overlap and stay within board
-            int x2 = i * 2;
-            gameService.placeShip("1", "player1", "S" + i, 2, x1, 0, "HORIZONTAL");
-            gameService.placeShip("1", "player2", "S" + i, 2, x2, 2, "HORIZONTAL");
-        }
+        gameService.placeShip("1", "player1", "Carrier", 5, 0, 0, "HORIZONTAL");
+        gameService.placeShip("1", "player1", "Battleship", 4, 0, 1, "HORIZONTAL");
+        gameService.placeShip("1", "player1", "Submarine", 3, 0, 2, "HORIZONTAL");
+        gameService.placeShip("1", "player1", "Patrol", 2, 0, 3, "HORIZONTAL");
+
+        gameService.placeShip("1", "player2", "Carrier", 5, 0, 5, "HORIZONTAL");
+        gameService.placeShip("1", "player2", "Battleship", 4, 0, 6, "HORIZONTAL");
+        gameService.placeShip("1", "player2", "Submarine", 3, 0, 7, "HORIZONTAL");
+        gameService.placeShip("1", "player2", "Patrol", 2, 0, 8, "HORIZONTAL");
 
         // Confirm placement through service (moves game to IN_PROGRESS)
         gameService.confirmPlayerReady("1", "player1");
