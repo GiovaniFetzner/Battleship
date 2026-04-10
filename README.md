@@ -57,7 +57,7 @@ Windows:
 
 ```bash
 cd battleship_api/battleship
-mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=dev
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"
 ```
 
 Linux/macOS:
