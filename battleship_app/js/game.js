@@ -714,15 +714,26 @@ function restorePlacedShipsFromLocalState() {
     updateReadyButtonState(currentGameState?.gameStatus);
 }
 
+function recomputeLocalShipsDamageFromBoardHits() {
+    for (const ship of localShipsState.values()) {
+        if (!ship.placed || !Array.isArray(ship.cells) || ship.cells.length === 0) {
+            ship.hits = 0;
+            ship.destroyed = false;
+            continue;
+        }
+
+        const hits = ship.cells.reduce((total, cell) => {
+            const key = toAttackKey(cell.col, cell.row);
+            return total + (attacksOnMyBoard.has(key) ? 1 : 0);
+        }, 0);
+
+        ship.hits = Math.min(hits, ship.size);
+        ship.destroyed = ship.hits >= ship.size;
+    }
+}
+
 function applyAttackToLocalShips(eventData) {
     if (!eventData || (eventData.type !== "ATTACK_RESULT" && eventData.type !== "attack_result")) {
-        return;
-    }
-
-    const wasAttackOnMyBoard =
-        eventData.currentPlayer === playerName ||
-        (eventData.gameOver === true && eventData.winner && eventData.winner !== playerName);
-    if (!wasAttackOnMyBoard) {
         return;
     }
 
@@ -737,17 +748,13 @@ function applyAttackToLocalShips(eventData) {
         return;
     }
 
-    for (const ship of localShipsState.values()) {
-        const matchesCell = ship.cells.some(cell => cell.row === y && cell.col === x);
-        if (!matchesCell || ship.destroyed) {
-            continue;
-        }
-
-        ship.hits = Math.min(ship.hits + 1, ship.size);
-        ship.destroyed = ship.hits >= ship.size;
-        persistLocalShipsState();
+    const key = toAttackKey(x, y);
+    if (!attacksOnMyBoard.has(key)) {
         return;
     }
+
+    recomputeLocalShipsDamageFromBoardHits();
+    persistLocalShipsState();
 }
 
 function buildLocalHudShips() {
