@@ -1,5 +1,7 @@
 # Battleship
 
+[![API CI/CD](https://github.com/GiovaniFetzner/Battleship/actions/workflows/api-ci.yml/badge.svg)](https://github.com/GiovaniFetzner/Battleship/actions/workflows/api-ci.yml)
+
 Projeto de Batalha Naval com backend em Spring Boot e frontend web em JavaScript puro.
 
 ## Documentacao do projeto
