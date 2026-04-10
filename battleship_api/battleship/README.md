@@ -60,7 +60,6 @@ Linux/macOS:
 
 ```bash
 cd battleship_api/battleship
-./mvnw spring-boot:run
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod
 ```
