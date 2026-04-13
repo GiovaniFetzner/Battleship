@@ -1,6 +1,14 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: battleship-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - battleship-network
+
   postgres:
     image: postgres:16-alpine
     container_name: battleship-postgres
@@ -33,7 +41,13 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/battleship
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      WEBSOCKET_ALLOWED_ORIGINS: ${WEBSOCKET_ALLOWED_ORIGINS:-http://localhost:3000}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
+      redis:
+        condition: service_started
       postgres:
         condition: service_healthy
     networks:

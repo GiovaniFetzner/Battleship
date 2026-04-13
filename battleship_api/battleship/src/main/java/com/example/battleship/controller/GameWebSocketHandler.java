@@ -1,7 +1,8 @@
 package com.example.battleship.controller;
 
 import com.example.battleship.domain.map.AttackResult;
-import com.example.battleship.webSocket.GameEventBroadcasterImpl;
+import com.example.battleship.domain.game.Game;
+import com.example.battleship.webSocket.GameEventBroadcaster;
 import com.example.battleship.dto.webSocket.inbound.GameMessage;
 import com.example.battleship.dto.webSocket.outbound.*;
 import com.example.battleship.service.GameService;
@@ -12,16 +13,19 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private final GameService gameService;
     private final ObjectMapper objectMapper;
-    private final GameEventBroadcasterImpl broadcaster;
+    private final GameEventBroadcaster broadcaster;
 
     public GameWebSocketHandler(GameService gameService,
             ObjectMapper objectMapper,
-            GameEventBroadcasterImpl broadcaster) {
+            GameEventBroadcaster broadcaster) {
         this.gameService = gameService;
         this.objectMapper = objectMapper;
         this.broadcaster = broadcaster;
@@ -139,7 +143,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 gameService.isGameOver(message.getGameId()),
                 gameService.getWinner(message.getGameId()));
 
-        broadcaster.broadcast(message.getGameId(), response);
+        broadcaster.broadcastToPlayers(message.getGameId(), getPlayersInGame(message.getGameId()), response);
     }
 
     private void handlePlaceShip(GameMessage message) throws Exception {
@@ -166,7 +170,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 message.getGameId(),
                 message.getPlayerName());
 
-        broadcaster.broadcast(message.getGameId(), response);
+        broadcaster.broadcastToPlayers(message.getGameId(), getPlayersInGame(message.getGameId()), response);
     }
 
     private void handlePlayerReady(GameMessage message) throws Exception {
@@ -180,7 +184,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 message.getPlayerName(),
                 bothReady);
 
-        broadcaster.broadcast(message.getGameId(), response);
+        broadcaster.broadcastToPlayers(message.getGameId(), getPlayersInGame(message.getGameId()), response);
 
         if (bothReady) {
 
@@ -190,8 +194,21 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                     message.getGameId(),
                     firstPlayer);
 
-            broadcaster.broadcast(message.getGameId(), startResponse);
+            broadcaster.broadcastToPlayers(message.getGameId(), getPlayersInGame(message.getGameId()), startResponse);
         }
+    }
+
+    private List<String> getPlayersInGame(String gameId) {
+        Game game = gameService.getGameState(gameId);
+
+        List<String> players = new ArrayList<>();
+        players.add(game.getPlayer1().getName());
+
+        if (game.getPlayer2() != null) {
+            players.add(game.getPlayer2().getName());
+        }
+
+        return players;
     }
 
     @Override

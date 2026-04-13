@@ -164,6 +164,103 @@ PLAYER_READY:
 - SHIP_PLACED
 - ERROR
 
+## Fluxo da partida
+
+```mermaid
+graph LR
+  F[Frontend]
+
+  subgraph REST[REST]
+    R1["GET /api/game/available"]
+    R2["POST /api/game"]
+    R3["POST /api/game/:gameId/join"]
+  end
+
+  subgraph WS[WebSocket]
+    W1["GameWebSocketHandler"]
+    S1["GameService + GameRepository"]
+    B1["GameEventBroadcaster"]
+  end
+
+  subgraph REDIS[Redis Pub/Sub per player]
+    P1["Publish: local player events"]
+    C1["Subscribe: other player events"]
+  end
+
+  R1 --> D2["Games waiting for second player"]
+  R2 --> D2
+  R3 --> D3["Game moves to PLACING_SHIPS"]
+
+  F --> R1
+  F --> R2
+  F --> R3
+  F --> W1
+
+  W1 --> S1
+  S1 --> D1["Game domain rules"]
+  W1 --> B1
+  B1 --> P1
+  B1 --> C1
+  P1 -->|channel: ws:game:id:player:name| C1
+  C1 --> W2["Deliver to WebSocketSession"]
+  W2 --> F
+
+  P1 -.->|if other instance subscribed| C1
+```
+
+Fluxo resumido:
+
+1. O frontend cria a partida via REST com `POST /api/game`.
+2. Enquanto nao houver segundo jogador, a partida continua em `WAITING_FOR_PLAYERS` e aparece em `GET /api/game/available`.
+3. Quando outro jogador entra em `POST /api/game/{gameId}/join`, a partida sai de espera e passa para a fase de posicionamento.
+4. As acoes em tempo real usam WebSocket em `/ws/game`.
+5. O backend publica os eventos no Redis em canal por jogador (ex.: `ws:game:{gameId}:player:{playerName}`). Cada instância que tem uma sessão daquele jogador se inscreve naquele canal.
+6. Quando um evento ocorre (ATTACK, PLAYER_READY, etc.), o handler publica para os canais de TODOS os jogadores da partida, e cada instância entrega apenas para suas sessões locais correspondentes.
+7. Isso permite que jogadores conectados em instâncias diferentes recebam o mesmo evento sem depender de memória local compartilhada (ex.: A em Instância 1, B em Instância 2; ambos recebem qualquer evento da partida).
+
+### Exemplo: Estrutura na AWS com 2 Tasks
+
+```text
+┌───────────────────────────────────────────────┐
+│         AWS ECS (Elastic Container)           │
+│                                               │
+│  ┌───────────────────┐  ┌───────────────────┐ │
+│  │   Task/Inst 1     │  │   Task/Inst 2     │ │
+│  │  (Port 8080)      │  │  (Port 8080)      │ │
+│  │                   │  │                   │ │
+│  │ GameSessions:     │  │ GameSessions:     │ │
+│  │ ├─ "Jogador 1"    │  ├─ "Jogador 2"      │ │
+│  │ └─ (Ws conectado) │  │ └─ (Ws conectado) │ │
+│  └───────────────────┘  └───────────────────┘ │
+│         ▲                      ▲              │
+│         │                      │              │                      
+└─────────┼──────────────────────┼──────────────┘
+          │                      │
+          └──────────┬───────────┘
+                     │
+              ┌──────▼────────┐
+              │  AWS ALB      │
+              │ (Load         │
+              │  Balancer)    │
+              └──────▲────────┘
+                     │
+                     │ URL pública: https://aws.....com
+                     │
+            ┌────────┴──────────┐
+            │                   │
+         Player A           Player B
+       (browser)           (browser)
+```
+
+Como funciona nesse cenário:
+
+1. Cada Task e uma instancia independente da API Spring Boot.
+2. O ALB distribui as conexoes WebSocket entre as Tasks.
+3. Cada instancia mantem apenas suas sessoes locais (players conectados nela).
+4. Quando ocorre um evento, a API publica no Redis em um canal por player (`ws:game:{gameId}:player:{playerName}`).
+5. Todas as instancias podem receber mensagens do Redis, mas cada uma entrega apenas para a sessao local correspondente ao player do canal.
+6. Resultado: players conectados em Tasks diferentes continuam sincronizados em tempo real.
+
 ## Integracao com frontend
 
 - CORS HTTP liberado para http://localhost:3000
