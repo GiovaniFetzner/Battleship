@@ -13,11 +13,17 @@
             return trimTrailingSlashes(explicitBaseUrl.trim());
         }
 
-        if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+        // Use same origin if available; fallback to localhost:8080 only if on port 8080
+        const sameOriginUrl = trimTrailingSlashes(window.location.origin) + API_PATH;
+        if (window.location.port === "8080") {
             return DEFAULT_LOCAL_API_BASE_URL;
         }
 
-        return trimTrailingSlashes(window.location.origin) + API_PATH;
+        if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+            return sameOriginUrl;
+        }
+
+        return sameOriginUrl;
     }
 
     function resolveApiUrl(path = "") {

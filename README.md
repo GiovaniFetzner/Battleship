@@ -38,17 +38,14 @@ battleship/
 ### Opcao 1: Com Docker (Recomendado para produção)
 
 ```bash
-# Iniciar PostgreSQL + API
+# Iniciar PostgreSQL + Redis + API + Frontend
 docker-compose up -d
-
-# Frontend
-cd battleship_app
-npm install
-npm run dev
 ```
 
 Backend: http://localhost:8080
 Frontend: http://localhost:3000
+
+Para AWS Beanstalk, use o arquivo `docker-compose.beanstalk.yml` com imagens em ECR e servicos gerenciados (RDS e ElastiCache), em vez de subir Postgres/Redis como containers da aplicacao.
 
 
 ### Opcao 2: Sem Docker (Desenvolvimento local)

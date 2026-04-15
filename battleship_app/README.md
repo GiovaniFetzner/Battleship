@@ -62,6 +62,17 @@ battleship_app/
 
 ## Como executar
 
+### Opcao 1: Com Docker (recomendado para deploy)
+
+```bash
+cd ..
+docker-compose up -d
+```
+
+Aplicacao: http://localhost:3000
+
+### Opcao 2: Sem Docker (desenvolvimento local)
+
 ```bash
 cd battleship_app
 npm install
