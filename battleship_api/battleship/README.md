@@ -102,6 +102,39 @@ Base path: /api/game
 
 - Metodo: GET /api/game/{gameId}?playerName=Player1
 
+Exemplo de resposta (resumo):
+
+```json
+{
+  "gameId": "4a4572e4-b488-4c10-814e-cce4afc2f1fd",
+  "gameStatus": "IN_PROGRESS",
+  "player1Name": "Player1",
+  "player2Name": "Player2",
+  "currentPlayer": "Player1",
+  "myTurn": true,
+  "winner": null,
+  "turnNumber": 7,
+  "myShipsRemaining": 3,
+  "opponentShipsRemaining": 2,
+  "myAttacksCount": 15,
+  "myShips": [
+    { "name": "porta_avioes", "size": 5, "hits": 1, "destroyed": false, "placed": true }
+  ],
+  "myBoardCells": [
+    { "x": 0, "y": 0, "attacked": false, "hit": false, "hasShip": true }
+  ],
+  "opponentBoardCells": [
+    { "x": 4, "y": 7, "attacked": true, "hit": false, "hasShip": false }
+  ]
+}
+```
+
+Observacoes:
+
+- `myBoardCells` e `opponentBoardCells` retornam o estado detalhado de 100 celulas de cada tabuleiro.
+- `myShips` expõe o estado dos navios do jogador para renderizacao do HUD.
+- Essa rota e utilizada para bootstrap/reconexao e fallback de sincronizacao do cliente.
+
 ## WebSocket
 
 - Endpoint: ws://localhost:8080/ws/game?gameId=<id>&playerName=<nome>

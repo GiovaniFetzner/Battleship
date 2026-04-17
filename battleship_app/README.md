@@ -50,7 +50,8 @@ battleship_app/
 - Envia posicionamentos via PLACE_SHIP e confirma pronto via PLAYER_READY
 - Envia ataques no tabuleiro do oponente via ATTACK
 - Processa eventos ATTACK_RESULT, PLAYER_READY, GAME_START, GAME_STATE_UPDATED e ERROR
-- Sincroniza estado detalhado via GET /api/game/{gameId}?playerName=<nome>
+- Sincroniza estado detalhado via GET /api/game/{gameId}?playerName=<nome> em reconexao/bootstrap
+- Usa fallback inteligente para GET apenas em desync, erro de processamento, perda de mensagem (timeout de ATTACK_RESULT) ou evento de atualizacao explicita de estado
 
 ## Recursos de UX atuais
 
