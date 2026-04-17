@@ -1,5 +1,8 @@
 package com.example.battleship.dto.rest.outbound;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class GameStateResponse {
 
     private String gameId;
@@ -17,6 +20,11 @@ public class GameStateResponse {
 
     private int myShipsRemaining;
     private int opponentShipsRemaining;
+    private int myAttacksCount;
+
+    private List<ShipStatusResponse> myShips = new ArrayList<>();
+    private List<CellResponse> myBoardCells = new ArrayList<>();
+    private List<CellResponse> opponentBoardCells = new ArrayList<>();
 
     public GameStateResponse() {}
 
@@ -49,4 +57,36 @@ public class GameStateResponse {
 
     public int getOpponentShipsRemaining() { return opponentShipsRemaining; }
     public void setOpponentShipsRemaining(int opponentShipsRemaining) { this.opponentShipsRemaining = opponentShipsRemaining; }
+
+    public int getMyAttacksCount() {
+        return myAttacksCount;
+    }
+
+    public void setMyAttacksCount(int myAttacksCount) {
+        this.myAttacksCount = myAttacksCount;
+    }
+
+    public List<ShipStatusResponse> getMyShips() {
+        return myShips;
+    }
+
+    public void setMyShips(List<ShipStatusResponse> myShips) {
+        this.myShips = myShips;
+    }
+
+    public List<CellResponse> getMyBoardCells() {
+        return myBoardCells;
+    }
+
+    public void setMyBoardCells(List<CellResponse> myBoardCells) {
+        this.myBoardCells = myBoardCells;
+    }
+
+    public List<CellResponse> getOpponentBoardCells() {
+        return opponentBoardCells;
+    }
+
+    public void setOpponentBoardCells(List<CellResponse> opponentBoardCells) {
+        this.opponentBoardCells = opponentBoardCells;
+    }
 }

@@ -3,12 +3,19 @@ package com.example.battleship.mapper;
 import com.example.battleship.domain.game.Game;
 import com.example.battleship.domain.game.Player;
 import com.example.battleship.domain.map.AttackResult;
+import com.example.battleship.domain.map.Board;
 import com.example.battleship.domain.map.Coordinate;
 import com.example.battleship.domain.map.Orientation;
+import com.example.battleship.domain.map.Ship;
+import com.example.battleship.dto.rest.outbound.CellResponse;
 import com.example.battleship.dto.rest.outbound.GameStateResponse;
+import com.example.battleship.dto.rest.outbound.ShipStatusResponse;
 import com.example.battleship.dto.webSocket.outbound.AttackResultResponse;
 import com.example.battleship.exception.InvalidMoveException;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class GameMapper {
@@ -74,19 +81,24 @@ public class GameMapper {
         Player me = getPlayerByName(game, playerName);
 
         if (me != null) {
+            Board myBoard = me.getBoard();
 
-            boolean allDestroyed = me.getBoard().allShipsDestroyed();
-
-            response.setMyShipsRemaining(
-                    allDestroyed ? 0 : 1
-            );
+            List<ShipStatusResponse> myShips = toShipStatus(myBoard);
+            response.setMyShips(myShips);
+            response.setMyShipsRemaining((int) myShips.stream().filter(ship -> !ship.isDestroyed()).count());
+            response.setMyBoardCells(toBoardCells(myBoard));
 
             Player opponent = getOpponent(game, me);
 
             if (opponent != null) {
-                response.setOpponentShipsRemaining(
-                        opponent.getBoard().allShipsDestroyed() ? 0 : 1
-                );
+                Board opponentBoard = opponent.getBoard();
+                response.setOpponentBoardCells(toBoardCells(opponentBoard));
+                response.setOpponentShipsRemaining((int) toShipStatus(opponentBoard).stream()
+                        .filter(ship -> !ship.isDestroyed())
+                        .count());
+                response.setMyAttacksCount((int) toBoardCells(opponentBoard).stream()
+                        .filter(CellResponse::isAttacked)
+                        .count());
             }
         }
 
@@ -119,6 +131,29 @@ public class GameMapper {
         return null;
     }
 
+    private List<ShipStatusResponse> toShipStatus(Board board) {
+        List<ShipStatusResponse> ships = new ArrayList<>();
+        for (Ship ship : board.getShips()) {
+            ships.add(new ShipStatusResponse(
+                    ship.getName(),
+                    ship.getSize(),
+                    ship.getHits(),
+                    ship.isDestroyed(),
+                    true
+            ));
+        }
+        return ships;
+    }
 
-
+    private List<CellResponse> toBoardCells(Board board) {
+        List<CellResponse> cells = new ArrayList<>();
+        for (int x = 0; x < board.getWidth(); x++) {
+            for (int y = 0; y < board.getHeight(); y++) {
+                boolean attacked = board.isAttackedAt(x, y);
+                boolean hasShip = board.hasShipAt(x, y);
+                cells.add(new CellResponse(x, y, attacked, attacked && hasShip, hasShip));
+            }
+        }
+        return cells;
+    }
 }

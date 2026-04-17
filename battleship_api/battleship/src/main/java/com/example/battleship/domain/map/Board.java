@@ -3,6 +3,7 @@ package com.example.battleship.domain.map;
 import com.example.battleship.exception.InvalidMoveException;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Board {
@@ -119,6 +120,32 @@ public class Board {
 
         return ships.stream()
                 .allMatch(Ship::isDestroyed);
+    }
+
+    public int getWidth() {
+        return width;
+    }
+
+    public int getHeight() {
+        return height;
+    }
+
+    public List<Ship> getShips() {
+        return Collections.unmodifiableList(ships);
+    }
+
+    public boolean hasShipAt(int x, int y) {
+        if (x < 0 || x >= width || y < 0 || y >= height) {
+            return false;
+        }
+        return cells[x][y].hasShip();
+    }
+
+    public boolean isAttackedAt(int x, int y) {
+        if (x < 0 || x >= width || y < 0 || y >= height) {
+            return false;
+        }
+        return cells[x][y].isAttacked();
     }
 
     /*

@@ -47,8 +47,10 @@ const occupiedCells = new Set();
 const placedShips = new Map();
 const localShipsState = new Map();
 const pendingAttacks = new Set();
+const pendingAttackFallbackTimeouts = new Map();
 const myAttackResults = new Map();
 const attacksOnMyBoard = new Set();
+const ATTACK_RESULT_TIMEOUT_MS = 5000;
 
 Object.entries(SHIP_SIZES).forEach(([shipType, size]) => {
     localShipsState.set(shipType, {
@@ -89,6 +91,20 @@ function normalizeAttackResult(result) {
     }
 
     return normalized === "MISS" ? "MISS" : null;
+}
+
+function toApiCellCoordinates(cell) {
+    if (!cell || typeof cell !== "object") {
+        return null;
+    }
+
+    const x = Number(cell.x);
+    const y = Number(cell.y);
+    if (!Number.isInteger(x) || !Number.isInteger(y)) {
+        return null;
+    }
+
+    return { x, y };
 }
 
 function markAttackOnBoard(boardElement, row, col, result) {
@@ -134,6 +150,79 @@ function updateBattleUi(gameState) {
     }
 }
 
+function clearBoardAttackClasses(boardElement) {
+    if (!boardElement) {
+        return;
+    }
+
+    boardElement.querySelectorAll(".board-cell").forEach(cell => {
+        cell.classList.remove("board-cell--attacked", "board-cell--hit", "board-cell--miss");
+    });
+}
+
+function syncBoardsFromApi(gameState) {
+    const myBoardCells = Array.isArray(gameState?.myBoardCells) ? gameState.myBoardCells : null;
+    const opponentBoardCells = Array.isArray(gameState?.opponentBoardCells) ? gameState.opponentBoardCells : null;
+
+    if (!myBoardCells && !opponentBoardCells) {
+        return;
+    }
+
+    if (board && myBoardCells) {
+        board.querySelectorAll(".board-cell.has-ship").forEach(cell => cell.classList.remove("has-ship"));
+        clearBoardAttackClasses(board);
+
+        attacksOnMyBoard.clear();
+
+        myBoardCells.forEach(cell => {
+            const coords = toApiCellCoordinates(cell);
+            if (!coords) {
+                return;
+            }
+
+            const boardCell = getBoardCellByCoordinates(board, coords.y, coords.x);
+            if (!boardCell) {
+                return;
+            }
+
+            if (cell.hasShip === true) {
+                boardCell.classList.add("has-ship");
+            }
+
+            if (cell.attacked === true) {
+                const result = cell.hit === true ? "HIT" : "MISS";
+                markAttackOnBoard(board, coords.y, coords.x, result);
+                attacksOnMyBoard.add(toAttackKey(coords.x, coords.y));
+            }
+        });
+
+        recomputeLocalShipsDamageFromBoardHits();
+        persistLocalShipsState();
+    }
+
+    if (opponentBoard && opponentBoardCells) {
+        clearBoardAttackClasses(opponentBoard);
+
+        myAttackResults.clear();
+        pendingAttacks.clear();
+
+        opponentBoardCells.forEach(cell => {
+            if (cell?.attacked !== true) {
+                return;
+            }
+
+            const coords = toApiCellCoordinates(cell);
+            if (!coords) {
+                return;
+            }
+
+            const result = cell.hit === true ? "HIT" : "MISS";
+            markAttackOnBoard(opponentBoard, coords.y, coords.x, result);
+            myAttackResults.set(toAttackKey(coords.x, coords.y), result);
+        });
+    }
+}
+
 function disableGameBoards() {
     if (opponentBoard) {
         opponentBoard.classList.add("board--disabled");
@@ -172,17 +261,40 @@ function hideGameOverOverlay() {
     }
 }
 
+function clearAttackResultFallback(key) {
+    const timeoutId = pendingAttackFallbackTimeouts.get(key);
+    if (timeoutId) {
+        window.clearTimeout(timeoutId);
+        pendingAttackFallbackTimeouts.delete(key);
+    }
+}
+
+function scheduleAttackResultFallback(key) {
+    clearAttackResultFallback(key);
+    const timeoutId = window.setTimeout(() => {
+        pendingAttacks.delete(key);
+        pendingAttackFallbackTimeouts.delete(key);
+        requestStateResync("timeout aguardando ATTACK_RESULT");
+    }, ATTACK_RESULT_TIMEOUT_MS);
+    pendingAttackFallbackTimeouts.set(key, timeoutId);
+}
+
+function requestStateResync(reason) {
+    console.warn("Solicitando resync via REST:", reason);
+    fetchGameState();
+}
+
 function processAttackResult(eventData) {
     const x = Number(eventData?.x);
     const y = Number(eventData?.y);
     if (!Number.isInteger(x) || !Number.isInteger(y)) {
-        return;
+        return false;
     }
 
     const key = toAttackKey(x, y);
     const result = normalizeAttackResult(eventData?.result);
     if (!result) {
-        return;
+        return false;
     }
 
     const isPendingAttack = pendingAttacks.has(key);
@@ -207,8 +319,10 @@ function processAttackResult(eventData) {
     }
 
     pendingAttacks.delete(key);
+    clearAttackResultFallback(key);
 
     console.log("Attack processed:", { x, y, result, wasMyAttack, boardType: wasMyAttack ? "opponent" : "player" });
+    return true;
 }
 
 function updateReadyButtonState(gameStatus = currentGameState?.gameStatus) {
@@ -767,9 +881,23 @@ function buildLocalHudShips() {
     }));
 }
 
+function isApiShipsListReliable(apiShips) {
+    if (!Array.isArray(apiShips) || apiShips.length === 0) {
+        return false;
+    }
+
+    const expectedSizes = new Set([2, 3, 4, 5]);
+
+    return apiShips.every(ship => {
+        const name = String(ship?.name || "").trim().toLowerCase();
+        const size = Number(ship?.size);
+        return name && name !== "persisted" && expectedSizes.has(size);
+    });
+}
+
 function getShipsForHud(gameState) {
     const apiShips = Array.isArray(gameState?.myShips) ? gameState.myShips : [];
-    if (apiShips.length > 0) {
+    if (isApiShipsListReliable(apiShips)) {
         return apiShips;
     }
 
@@ -777,7 +905,11 @@ function getShipsForHud(gameState) {
 }
 
 function getShipsRemainingForHud(gameState, ships) {
-    if (Array.isArray(gameState?.myShips) && gameState.myShips.length > 0) {
+    if (Number.isInteger(gameState?.myShipsRemaining)) {
+        return gameState.myShipsRemaining;
+    }
+
+    if (isApiShipsListReliable(gameState?.myShips)) {
         return ships.filter(ship => ship?.destroyed !== true).length;
     }
 
@@ -867,6 +999,7 @@ function openWebSocket() {
         socketStatus.textContent = "Conectado";
         console.log("WebSocket conectado");
         updateReadyButtonState();
+        fetchGameState();
     });
 
     gameSocket.addEventListener("message", event => {
@@ -878,7 +1011,7 @@ function openWebSocket() {
             console.log("WebSocket message:", data);
 
             if (data.type === "GAME_STATE_UPDATED") {
-                fetchGameState();
+                requestStateResync("evento GAME_STATE_UPDATED");
                 return;
             }
 
@@ -889,7 +1022,11 @@ function openWebSocket() {
                     persistReadyConfirmedState();
                 }
                 updateReadyButtonState();
-                fetchGameState();
+                if (!currentGameState) {
+                    requestStateResync("estado ausente em PLAYER_READY");
+                } else {
+                    renderHud(currentGameState, playerName);
+                }
                 return;
             }
 
@@ -898,14 +1035,38 @@ function openWebSocket() {
                 isPlayerReadyConfirmed = true;
                 persistReadyConfirmedState();
                 updateReadyButtonState();
-                fetchGameState();
+                if (!currentGameState) {
+                    requestStateResync("estado ausente em GAME_START");
+                } else {
+                    currentGameState.gameStatus = "IN_PROGRESS";
+                    currentGameState.currentPlayer = data.firstPlayer;
+                    currentGameState.myTurn = data.firstPlayer === playerName;
+                    renderHud(currentGameState, playerName);
+                }
                 return;
             }
 
             if (data.type === "ATTACK_RESULT") {
-                processAttackResult(data);
+                const attackApplied = processAttackResult(data);
                 applyAttackToLocalShips(data);
-                fetchGameState();
+
+                if (!attackApplied) {
+                    requestStateResync("payload ATTACK_RESULT invalido/desync");
+                    return;
+                }
+
+                if (!currentGameState) {
+                    requestStateResync("estado ausente apos ATTACK_RESULT");
+                    return;
+                }
+
+                currentGameState.currentPlayer = data.currentPlayer;
+                currentGameState.myTurn = data.currentPlayer === playerName;
+                if (data.gameOver === true) {
+                    currentGameState.gameStatus = "FINISHED";
+                    currentGameState.winner = data.winner || null;
+                }
+                renderHud(currentGameState, playerName);
                 return;
             }
 
@@ -929,6 +1090,8 @@ function openWebSocket() {
                     alert(data.message + "\nSerá redirecionado para a página inicial.");
                     window.location.href = "index.html";
                 }
+
+                requestStateResync("evento ERROR via websocket");
                 return;
             }
 
@@ -938,6 +1101,7 @@ function openWebSocket() {
 
         } catch (error) {
             console.error(error);
+            requestStateResync("falha ao processar mensagem websocket");
         }
     });
 
@@ -1096,7 +1260,10 @@ function renderHud(gameState, displayName) {
 
     lastRenderedMyTurn = currentMyTurn;
 
-    hudMyAttacks.textContent = myAttackResults.size.toString();
+    const myAttacksCount = Number.isInteger(gameState?.myAttacksCount)
+        ? gameState.myAttacksCount
+        : myAttackResults.size;
+    hudMyAttacks.textContent = myAttacksCount.toString();
 
     if (waitingMessage) {
         waitingMessage.hidden = gameState.gameStatus !== "WAITING_FOR_PLAYERS";
@@ -1164,6 +1331,7 @@ function sendAttack(row, col) {
     }
 
     pendingAttacks.add(key);
+    scheduleAttackResultFallback(key);
 
     try {
         sendGameMessage({
@@ -1175,6 +1343,7 @@ function sendAttack(row, col) {
         });
     } catch (error) {
         pendingAttacks.delete(key);
+        clearAttackResultFallback(key);
         throw error;
     }
 }
@@ -1388,6 +1557,7 @@ async function fetchGameState() {
         const state = await response.json();
 
         sessionStorage.setItem("gameState", JSON.stringify(state));
+        syncBoardsFromApi(state);
         renderHud(state, playerName);
 
     } catch (error) {
