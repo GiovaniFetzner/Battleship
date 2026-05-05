@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
-@Profile("dev")
+@Profile("local-memory")
 public class InMemoryGameRepository implements GameRepository {
 
     private final Map<String, Game> games = new ConcurrentHashMap<>();

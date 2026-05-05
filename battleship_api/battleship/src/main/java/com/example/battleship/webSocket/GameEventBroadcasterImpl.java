@@ -24,7 +24,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Component
-@Profile({ "prod", "test", "redis-smoke" })
+@Profile({ "dev", "prod", "test", "redis-smoke" })
 public class GameEventBroadcasterImpl implements GameEventBroadcaster {
 
     private final ObjectMapper objectMapper;

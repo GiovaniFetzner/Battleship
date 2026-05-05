@@ -35,7 +35,7 @@ battleship/
 
 ## Como executar
 
-### Opcao 1: Com Docker (Recomendado para produção)
+### Opcao 1: Com Docker (Recomendado para desenvolvimento)
 
 ```bash
 # Iniciar PostgreSQL + Redis + API + Frontend
@@ -81,5 +81,5 @@ Frontend: http://localhost:3000
 ## Estado atual
 
 - Projeto funcional para fluxo completo de partida local (2 jogadores)
-- Persistencia em memoria no backend (sem banco de dados)
+- Persistencia com PostgreSQL + Redis no profile `dev` (via containers)
 - Foco em estudo de dominio, regras de jogo e comunicacao em tempo real

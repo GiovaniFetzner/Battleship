@@ -34,16 +34,16 @@ Backend do projeto Battleship, implementado com Spring Boot.
   - `repository/GameRepository` (acesso principal ao agregado de jogo no fluxo da aplicacao)
   - `service/persistence/port/GameStatePersistencePort` (snapshot de estado para salvar/recuperar)
 - Adaptadores/implementacoes:
-  - `repository/impl/InMemoryGameRepository` (`@Profile("dev")`) para desenvolvimento sem banco
-  - `repository/impl/jpa/JpaGameRepository` (`@Profile({ "prod", "test" })`) para persistir o agregado com JPA
+  - `repository/impl/InMemoryGameRepository` (`@Profile("local-memory")`) para fallback local sem banco
+  - `repository/impl/jpa/JpaGameRepository` (`@Profile({ "dev", "prod", "test" })`) para persistir o agregado com JPA
   - `persistence/adapter/JpaGameStatePersistenceAdapter` (`@Profile({ "prod", "test" })`) para implementar a porta de snapshot
 - Mapeamento e modelo de persistencia:
   - DTOs de snapshot em `dto/persistence`
   - Entidades JPA em `persistence/entity` (`GameEntity`, `PlayerEntity`, `BoardEntity`, `AttackEntity`)
   - Mapper central em `persistence/mapper/GameEntityMapper`
 - Profiles e banco:
-  - `dev`: sem datasource/JPA (autoconfiguracoes JDBC/JPA desativadas em `application-dev.properties`)
-  - `prod`: PostgreSQL (`application-prod.properties`)
+  - `dev`: stack completa para testes de deploy local (PostgreSQL + Redis + JPA/Flyway) via Docker
+  - `prod`: exclusivo AWS, com placeholders para RDS/ElastiCache/origens em `application-prod.properties`
   - `test`: H2 em memoria com `ddl-auto=create-drop` (`application-test.properties`)
 
 ## Como executar
@@ -64,7 +64,7 @@ cd battleship_api/battleship
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod
 ```
 
-Observacao: o profile `dev` sobe a API sem banco de dados; o profile `prod` espera PostgreSQL disponivel com as variaveis `DB_URL`, `DB_USERNAME` e `DB_PASSWORD` opcionalmente definidas. O profile `test` usa H2 em memoria.
+Observacao: o profile `dev` foi ajustado para uso com containers locais (PostgreSQL + Redis). O profile `prod` e reservado para AWS e requer variaveis reais de infraestrutura. O profile `test` usa H2 em memoria.
 
 Servidor: http://localhost:8080
 

@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
 @Primary
-@Profile({ "prod", "test" })
+@Profile({ "dev", "prod", "test" })
 public class JpaGameRepository implements GameRepository {
 
     private static final Field GAME_ID_FIELD = field(Game.class, "id");

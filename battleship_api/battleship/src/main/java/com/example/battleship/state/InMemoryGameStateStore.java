@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @Primary
-@Profile({ "dev", "test" })
+@Profile({ "test" })
 public class InMemoryGameStateStore implements GameStateStore {
 
     private final Map<String, Game> games = new ConcurrentHashMap<>();

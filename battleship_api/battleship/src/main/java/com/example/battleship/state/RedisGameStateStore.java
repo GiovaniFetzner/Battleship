@@ -10,7 +10,7 @@ import java.time.Duration;
 import java.util.Optional;
 
 @Component
-@Profile({ "prod", "redis-smoke" })
+@Profile({ "dev", "prod", "redis-smoke" })
 public class RedisGameStateStore implements GameStateStore {
 
     private final RedisTemplate<String, GameSnapshotDto> redisTemplate;
