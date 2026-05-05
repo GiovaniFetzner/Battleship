@@ -3,6 +3,7 @@ package com.example.battleship.webSocket;
 import com.example.battleship.dto.webSocket.outbound.GameEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -23,6 +24,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Component
+@Profile({ "prod", "test", "redis-smoke" })
 public class GameEventBroadcasterImpl implements GameEventBroadcaster {
 
     private final ObjectMapper objectMapper;

@@ -9,17 +9,57 @@ import com.example.battleship.domain.map.Orientation;
 import com.example.battleship.domain.map.Ship;
 import com.example.battleship.repository.GameRepository;
 import com.example.battleship.service.GameService;
+import com.example.battleship.service.persistence.async.AsyncGamePersistenceService;
+import com.example.battleship.state.GameStateStore;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class GameServiceImpl implements GameService {
 
     private final GameRepository gameRepository;
 
-    public GameServiceImpl(GameRepository gameRepository) {
+    // Camada de persistência utilizando o Redis
+    private final GameStateStore gameStateStore;
+    private static final int SAVE_INTERVAL = 5;
+    private final Map<String, Long> lastSave = new ConcurrentHashMap<>();
+
+    private final AsyncGamePersistenceService asyncGamePersistenceService;
+
+    public GameServiceImpl(GameRepository gameRepository, GameStateStore gameStateStore,
+            AsyncGamePersistenceService asyncGamePersistenceService) {
         this.gameRepository = gameRepository;
+        this.gameStateStore = gameStateStore;
+        this.asyncGamePersistenceService = asyncGamePersistenceService;
+    }
+
+    private void saveGame(Game game) {
+        gameStateStore.save(game);
+        persistIfNeeded(game);
+    }
+
+    private void persistIfNeeded(Game game) {
+        long now = System.currentTimeMillis();
+        long lastSaved = lastSave.getOrDefault(game.getId(), 0L);
+
+        if (game.getState() == GameState.FINISHED) {
+            asyncGamePersistenceService.persist(game);
+            lastSave.put(game.getId(), now);
+            return;
+        }
+
+        if (now - lastSaved < 3000) {
+            return;
+        }
+
+        if (game.getTurnCounter() % SAVE_INTERVAL == 0) {
+            asyncGamePersistenceService.persist(game);
+            lastSave.put(game.getId(), now);
+        }
     }
 
     @Override
@@ -29,11 +69,10 @@ public class GameServiceImpl implements GameService {
 
         Game game = new Game(player1);
 
-        gameRepository.save(game);
+        saveGame(game);
 
         return game;
     }
-
 
     @Override
     public Game joinGame(String gameId, String playerName) {
@@ -44,19 +83,19 @@ public class GameServiceImpl implements GameService {
 
         game.addPlayer2(player2);
 
-        gameRepository.save(game);
+        saveGame(game);
 
         return game;
     }
 
     @Override
     public Game placeShip(String gameId,
-                          String playerName,
-                          String shipType,
-                          int size,
-                          int x,
-                          int y,
-                          String orientation) {
+            String playerName,
+            String shipType,
+            int size,
+            int x,
+            int y,
+            String orientation) {
 
         Game game = getGameOrThrow(gameId);
 
@@ -66,23 +105,22 @@ public class GameServiceImpl implements GameService {
 
         game.placeShip(playerName, ship, coordinate, orient);
 
-        gameRepository.save(game);
+        saveGame(game);
 
         return game;
     }
 
     @Override
     public AttackResult attack(String gameId,
-                               String playerName,
-                               int x,
-                               int y) {
+            String playerName,
+            int x,
+            int y) {
 
         Game game = getGameOrThrow(gameId);
 
-        AttackResult result =
-                game.attack(playerName, new Coordinate(x, y));
+        AttackResult result = game.attack(playerName, new Coordinate(x, y));
 
-        gameRepository.save(game);
+        saveGame(game);
 
         return result;
     }
@@ -94,11 +132,10 @@ public class GameServiceImpl implements GameService {
 
         game.confirmPlacement(playerName);
 
-        gameRepository.save(game);
+        saveGame(game);
 
         return game.getState() == GameState.IN_PROGRESS;
     }
-
 
     @Override
     public Game getGameState(String gameId) {
@@ -128,12 +165,13 @@ public class GameServiceImpl implements GameService {
 
         getGameOrThrow(gameId);
 
+        gameStateStore.delete(gameId);
+        lastSave.remove(gameId);
         gameRepository.deleteById(gameId);
     }
 
-
     private Game getGameOrThrow(String gameId) {
-        return gameRepository.findById(gameId)
+        return gameStateStore.get(gameId)
                 .orElseThrow(() -> new RuntimeException("Game not found"));
     }
 
@@ -145,7 +183,6 @@ public class GameServiceImpl implements GameService {
         return game.getCurrentPlayer().getName();
     }
 
-
     @Override
     public boolean isGameOver(String gameId) {
 
@@ -153,7 +190,6 @@ public class GameServiceImpl implements GameService {
 
         return game.getState() == GameState.FINISHED;
     }
-
 
     @Override
     public String getWinner(String gameId) {

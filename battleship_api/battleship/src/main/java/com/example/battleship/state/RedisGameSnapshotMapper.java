@@ -1,4 +1,4 @@
-package com.example.battleship.repository.impl.jpa;
+package com.example.battleship.state;
 
 import com.example.battleship.domain.game.Game;
 import com.example.battleship.domain.game.GameState;
@@ -7,23 +7,18 @@ import com.example.battleship.domain.game.Turn;
 import com.example.battleship.domain.map.Board;
 import com.example.battleship.domain.map.Cell;
 import com.example.battleship.domain.map.Ship;
+import com.example.battleship.dto.persistence.AttackSnapshotDto;
 import com.example.battleship.dto.persistence.BoardSnapshotDto;
 import com.example.battleship.dto.persistence.CoordinateSnapshotDto;
 import com.example.battleship.dto.persistence.GameSnapshotDto;
 import com.example.battleship.dto.persistence.PlayerSnapshotDto;
-import com.example.battleship.persistence.entity.GameEntity;
+import com.example.battleship.persistence.entity.AttackResultType;
 import com.example.battleship.persistence.entity.GameStatus;
-import com.example.battleship.persistence.mapper.GameEntityMapper;
-import com.example.battleship.repository.GameRepository;
-import com.example.battleship.repository.jpa.GameJpaRepository;
-import org.springframework.context.annotation.Profile;
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.stereotype.Component;
 
-import java.util.ArrayDeque;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,12 +27,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
-@Repository
-@Primary
-@Profile({ "prod", "test" })
-public class JpaGameRepository implements GameRepository {
+@Component
+public class RedisGameSnapshotMapper {
 
     private static final Field GAME_ID_FIELD = field(Game.class, "id");
     private static final Field GAME_STATE_FIELD = field(Game.class, "state");
@@ -55,59 +47,7 @@ public class JpaGameRepository implements GameRepository {
     private static final Field CELL_ATTACKED_FIELD = field(Cell.class, "attacked");
     private static final Field SHIP_HITS_FIELD = field(Ship.class, "hits");
 
-    private final GameJpaRepository springDataRepository;
-    private final GameEntityMapper gameEntityMapper;
-    private final Map<String, UUID> gameIdsByString = new ConcurrentHashMap<>();
-
-    public JpaGameRepository(GameJpaRepository springDataRepository, GameEntityMapper gameEntityMapper) {
-        this.springDataRepository = springDataRepository;
-        this.gameEntityMapper = gameEntityMapper;
-    }
-
-    @Override
-    @Transactional
-    public void save(Game game) {
-        GameSnapshotDto snapshot = toSnapshot(game);
-        GameEntity entity = springDataRepository.findAggregateById(snapshot.getId())
-                .orElseGet(() -> {
-                    GameEntity created = GameEntity.createNew();
-                    created.assignId(snapshot.getId());
-                    return created;
-                });
-        gameEntityMapper.updateEntityFromSnapshot(snapshot, entity);
-        springDataRepository.saveAndFlush(entity);
-        gameIdsByString.put(game.getId(), snapshot.getId());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<Game> findById(String gameId) {
-        return resolveUuid(gameId)
-                .flatMap(springDataRepository::findAggregateById)
-                .map(gameEntityMapper::toSnapshot)
-                .map(this::toDomain);
-    }
-
-    @Override
-    @Transactional
-    public void deleteById(String gameId) {
-        resolveUuid(gameId).ifPresent(springDataRepository::deleteById);
-        gameIdsByString.remove(gameId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Map<String, Game> findAll() {
-        Map<String, Game> result = new HashMap<>();
-        for (GameEntity entity : springDataRepository.findAll()) {
-            Game game = toDomain(gameEntityMapper.toSnapshot(entity));
-            result.put(game.getId(), game);
-            gameIdsByString.put(game.getId(), UUID.fromString(game.getId()));
-        }
-        return result;
-    }
-
-    private GameSnapshotDto toSnapshot(Game game) {
+    public GameSnapshotDto toSnapshot(Game game) {
         GameSnapshotDto snapshot = new GameSnapshotDto();
         UUID gameId = UUID.fromString(game.getId());
         snapshot.setId(gameId);
@@ -117,13 +57,11 @@ public class JpaGameRepository implements GameRepository {
         snapshot.setAttacks(new ArrayList<>());
 
         Player player1 = game.getPlayer1();
-        UUID player1Id = playerUuid(player1.getName(), game.getId(), 0);
-        snapshot.getPlayers().add(toPlayerSnapshot(player1, player1Id, 0));
+        snapshot.getPlayers().add(toPlayerSnapshot(player1, playerUuid(player1.getName(), game.getId(), 0), 0));
 
         Player player2 = game.getPlayer2();
         if (player2 != null) {
-            UUID player2Id = playerUuid(player2.getName(), game.getId(), 1);
-            snapshot.getPlayers().add(toPlayerSnapshot(player2, player2Id, 1));
+            snapshot.getPlayers().add(toPlayerSnapshot(player2, playerUuid(player2.getName(), game.getId(), 1), 1));
         }
 
         if (game.getCurrentPlayer() != null) {
@@ -132,11 +70,67 @@ public class JpaGameRepository implements GameRepository {
         }
 
         if (game.getWinner() != null) {
-            snapshot.setWinnerPlayerId(playerUuid(game.getWinner().getName(), game.getId(),
-                    seatByName(game, game.getWinner().getName())));
+            snapshot.setWinnerPlayerId(
+                    playerUuid(game.getWinner().getName(), game.getId(), seatByName(game, game.getWinner().getName())));
         }
 
         return snapshot;
+    }
+
+    public Game toDomain(GameSnapshotDto snapshot) {
+        List<PlayerSnapshotDto> players = snapshot.getPlayers();
+        if (players == null || players.isEmpty()) {
+            throw new IllegalStateException("Snapshot must contain at least one player");
+        }
+
+        PlayerSnapshotDto p1Snapshot = players.stream()
+                .filter(player -> player.getSeatNumber() == 0)
+                .findFirst()
+                .orElse(players.get(0));
+
+        Game game = new Game(new Player(p1Snapshot.getName()));
+        setField(GAME_ID_FIELD, game, snapshot.getId().toString());
+
+        Player player1 = game.getPlayer1();
+        restoreBoard(player1, p1Snapshot.getBoard());
+        setField(PLAYER_SHIPS_PLACED_FIELD, player1, p1Snapshot.isReady());
+
+        PlayerSnapshotDto p2Snapshot = players.stream()
+                .filter(player -> player.getSeatNumber() == 1)
+                .findFirst()
+                .orElse(null);
+
+        if (p2Snapshot != null) {
+            Player player2 = new Player(p2Snapshot.getName());
+            game.addPlayer2(player2);
+            restoreBoard(player2, p2Snapshot.getBoard());
+            setField(PLAYER_SHIPS_PLACED_FIELD, player2, p2Snapshot.isReady());
+            setField(GAME_PLAYER2_FIELD, game, player2);
+        }
+
+        setField(GAME_STATE_FIELD, game, GameState.valueOf(snapshot.getStatus().name()));
+
+        Set<String> readyPlayers = new HashSet<>();
+        for (PlayerSnapshotDto playerSnapshot : players) {
+            if (playerSnapshot.isReady()) {
+                readyPlayers.add(playerSnapshot.getName());
+            }
+        }
+        setField(GAME_READY_PLAYERS_FIELD, game, readyPlayers);
+
+        if (snapshot.getCurrentTurnPlayerId() != null) {
+            Player currentPlayer = findPlayerBySnapshotId(game, snapshot.getCurrentTurnPlayerId());
+            setField(GAME_CURRENT_PLAYER_FIELD, game, currentPlayer);
+            setField(GAME_TURN_COUNTER_FIELD, game, snapshot.getTurnCounter());
+            setField(GAME_CURRENT_TURN_FIELD, game,
+                    currentPlayer != null ? new Turn(currentPlayer, snapshot.getTurnCounter()) : null);
+        }
+
+        if (snapshot.getWinnerPlayerId() != null) {
+            setField(GAME_WINNER_FIELD, game, findPlayerBySnapshotId(game, snapshot.getWinnerPlayerId()));
+        }
+
+        return game;
     }
 
     private PlayerSnapshotDto toPlayerSnapshot(Player player, UUID playerId, int seatNumber) {
@@ -178,63 +172,6 @@ public class JpaGameRepository implements GameRepository {
         return snapshot;
     }
 
-    private Game toDomain(GameSnapshotDto snapshot) {
-        List<PlayerSnapshotDto> players = snapshot.getPlayers();
-        if (players == null || players.isEmpty()) {
-            throw new IllegalStateException("Snapshot must contain at least one player");
-        }
-
-        PlayerSnapshotDto p1Snapshot = players.stream()
-                .filter(p -> p.getSeatNumber() == 0)
-                .findFirst()
-                .orElse(players.get(0));
-
-        Game game = new Game(new Player(p1Snapshot.getName()));
-        setField(GAME_ID_FIELD, game, snapshot.getId().toString());
-
-        Player player1 = game.getPlayer1();
-        restoreBoard(player1, p1Snapshot.getBoard());
-        setField(PLAYER_SHIPS_PLACED_FIELD, player1, p1Snapshot.isReady());
-
-        PlayerSnapshotDto p2Snapshot = players.stream()
-                .filter(p -> p.getSeatNumber() == 1)
-                .findFirst()
-                .orElse(null);
-
-        if (p2Snapshot != null) {
-            Player player2 = new Player(p2Snapshot.getName());
-            game.addPlayer2(player2);
-            restoreBoard(player2, p2Snapshot.getBoard());
-            setField(PLAYER_SHIPS_PLACED_FIELD, player2, p2Snapshot.isReady());
-            setField(GAME_PLAYER2_FIELD, game, player2);
-        }
-
-        setField(GAME_STATE_FIELD, game, GameState.valueOf(snapshot.getStatus().name()));
-
-        Set<String> readyPlayers = new HashSet<>();
-        for (PlayerSnapshotDto playerSnapshot : players) {
-            if (playerSnapshot.isReady()) {
-                readyPlayers.add(playerSnapshot.getName());
-            }
-        }
-        setField(GAME_READY_PLAYERS_FIELD, game, readyPlayers);
-
-        if (snapshot.getCurrentTurnPlayerId() != null) {
-            Player currentPlayer = findPlayerBySnapshotId(game, snapshot.getCurrentTurnPlayerId());
-            setField(GAME_CURRENT_PLAYER_FIELD, game, currentPlayer);
-            setField(GAME_TURN_COUNTER_FIELD, game, snapshot.getTurnCounter());
-            setField(GAME_CURRENT_TURN_FIELD, game,
-                    currentPlayer != null ? new Turn(currentPlayer, snapshot.getTurnCounter()) : null);
-        }
-
-        if (snapshot.getWinnerPlayerId() != null) {
-            setField(GAME_WINNER_FIELD, game, findPlayerBySnapshotId(game, snapshot.getWinnerPlayerId()));
-        }
-
-        gameIdsByString.put(game.getId(), snapshot.getId());
-        return game;
-    }
-
     private void restoreBoard(Player player, BoardSnapshotDto boardSnapshot) {
         if (boardSnapshot == null) {
             return;
@@ -265,7 +202,7 @@ public class JpaGameRepository implements GameRepository {
             long hitCount = shipComponent.stream()
                     .filter(hitCells::contains)
                     .count();
-            for (int i = 0; i < hitCount; i += 1) {
+            for (int i = 0; i < hitCount; i++) {
                 ship.hit();
             }
 
@@ -324,31 +261,16 @@ public class JpaGameRepository implements GameRepository {
         return neighbors;
     }
 
-    private Optional<UUID> resolveUuid(String gameId) {
-        UUID mapped = gameIdsByString.get(gameId);
-        if (mapped != null) {
-            return Optional.of(mapped);
-        }
-
-        try {
-            return Optional.of(UUID.fromString(gameId));
-        } catch (IllegalArgumentException ex) {
-            return Optional.empty();
-        }
-    }
-
     private Player findPlayerBySnapshotId(Game game, UUID playerId) {
         if (playerId == null) {
             return null;
         }
 
-        if (game.getPlayer1() != null
-                && playerUuid(game.getPlayer1().getName(), game.getId(), 0).equals(playerId)) {
+        if (game.getPlayer1() != null && playerUuid(game.getPlayer1().getName(), game.getId(), 0).equals(playerId)) {
             return game.getPlayer1();
         }
 
-        if (game.getPlayer2() != null
-                && playerUuid(game.getPlayer2().getName(), game.getId(), 1).equals(playerId)) {
+        if (game.getPlayer2() != null && playerUuid(game.getPlayer2().getName(), game.getId(), 1).equals(playerId)) {
             return game.getPlayer2();
         }
 

@@ -6,6 +6,8 @@ import com.example.battleship.domain.map.AttackResult;
 import com.example.battleship.exception.InvalidMoveException;
 import com.example.battleship.repository.GameRepository;
 import com.example.battleship.service.impl.GameServiceImpl;
+import com.example.battleship.service.persistence.async.AsyncGamePersistenceService;
+import com.example.battleship.state.GameStateStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +26,12 @@ class GameServiceImplTest {
 
     @Mock
     private GameRepository gameRepository;
+
+    @Mock
+    private GameStateStore gameStateStore;
+
+    @Mock
+    private AsyncGamePersistenceService asyncGamePersistenceService;
 
     @InjectMocks
     private GameServiceImpl gameService;
@@ -47,7 +55,7 @@ class GameServiceImplTest {
 
         assertNotNull(result);
         assertEquals("player1", result.getPlayer1().getName());
-        verify(gameRepository, times(1)).save(any(Game.class));
+        verify(gameStateStore, times(1)).save(any(Game.class));
     }
 
     // =========================
@@ -57,13 +65,13 @@ class GameServiceImplTest {
     @Test
     void shouldJoinGame() {
 
-        when(gameRepository.findById("1")).thenReturn(Optional.of(game));
+        when(gameStateStore.get("1")).thenReturn(Optional.of(game));
 
         Game result = gameService.joinGame("1", "player2");
 
         assertNotNull(result);
         assertEquals("player2", result.findPlayer("player2").getName());
-        verify(gameRepository).save(game);
+        verify(gameStateStore).save(game);
     }
 
     @Test
@@ -71,7 +79,7 @@ class GameServiceImplTest {
 
         game.addPlayer2(new Player("existing"));
 
-        when(gameRepository.findById("1")).thenReturn(Optional.of(game));
+        when(gameStateStore.get("1")).thenReturn(Optional.of(game));
 
         assertThrows(InvalidMoveException.class, () -> gameService.joinGame("1", "player2"));
     }
@@ -83,7 +91,7 @@ class GameServiceImplTest {
     @Test
     void shouldPlaceShip() {
 
-        when(gameRepository.findById("1")).thenReturn(Optional.of(game));
+        when(gameStateStore.get("1")).thenReturn(Optional.of(game));
 
         // require two players to be in PLACING_SHIPS phase
         game.addPlayer2(new Player("player2"));
@@ -91,7 +99,7 @@ class GameServiceImplTest {
         Game result = gameService.placeShip("1", "player1", "Destroyer", 2, 0, 0, "HORIZONTAL");
 
         assertNotNull(result);
-        verify(gameRepository).save(game);
+        verify(gameStateStore).save(game);
     }
 
     // =========================
@@ -104,7 +112,7 @@ class GameServiceImplTest {
         // Prepare game with both players and place the required fleet (5+4+3+2 = 14
         // cells)
         game.addPlayer2(new Player("player2"));
-        when(gameRepository.findById("1")).thenReturn(Optional.of(game));
+        when(gameStateStore.get("1")).thenReturn(Optional.of(game));
 
         gameService.placeShip("1", "player1", "Carrier", 5, 0, 0, "HORIZONTAL");
         gameService.placeShip("1", "player1", "Battleship", 4, 0, 1, "HORIZONTAL");
@@ -123,7 +131,7 @@ class GameServiceImplTest {
         AttackResult result = gameService.attack("1", "player1", 0, 0);
 
         assertNotNull(result);
-        verify(gameRepository, atLeastOnce()).save(game);
+        verify(gameStateStore, atLeastOnce()).save(game);
     }
 
     // =========================
@@ -133,7 +141,7 @@ class GameServiceImplTest {
     @Test
     void shouldReturnGameState() {
 
-        when(gameRepository.findById("1")).thenReturn(Optional.of(game));
+        when(gameStateStore.get("1")).thenReturn(Optional.of(game));
 
         Game result = gameService.getGameState("1");
 
@@ -162,10 +170,11 @@ class GameServiceImplTest {
     @Test
     void shouldDeleteGame() {
 
-        when(gameRepository.findById("1")).thenReturn(Optional.of(game));
+        when(gameStateStore.get("1")).thenReturn(Optional.of(game));
 
         gameService.deleteGame("1");
 
+        verify(gameStateStore).delete("1");
         verify(gameRepository).deleteById("1");
     }
 }
