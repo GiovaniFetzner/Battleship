@@ -59,7 +59,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
         // Validar se o jogo já terminou
         if (gameService.isGameOver(gameId)) {
-            ErrorResponse error = new ErrorResponse(gameId, "Este jogo já foi finalizado. Criar um novo jogo.");
+            ErrorResponse error = new ErrorResponse(gameId,
+                    "Este jogo já foi finalizado. Por favor, crie um novo jogo.");
             session.sendMessage(new TextMessage(objectMapper.writeValueAsString(error)));
             session.close(CloseStatus.NORMAL);
             System.out.println("Reconexão rejeitada - Jogo finalizado: " + gameId);

@@ -1,0 +1,117 @@
+# PROD: Deploy completo em AWS (ou local staging)
+# Execute: docker-compose -f docker-compose.prod.yml up -d
+#
+# Pendencias para produção:
+# 1. Em AWS (Beanstalk/ECS), use imagens ECR em vez de build local
+# 2. Substitua <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com por seu ECR
+# 3. Para banco e cache, prefira RDS e ElastiCache ao invés de containers
+# 4. Este arquivo é para staging/prototipagem apenas
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: battleship-redis-prod
+    ports:
+      - "6379:6379"
+    env_file:
+      - .env
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - battleship-network-prod
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: battleship-postgres-prod
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: battleship
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - battleship-network-prod
+    restart: unless-stopped
+
+  battleship-api:
+    # Em AWS, substitua por:
+    # image: <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/battleship-api:latest
+    build:
+      context: ./battleship_api/battleship
+      dockerfile: Dockerfile
+      # Forçar rebuild a cada execução
+      # (remova "cache_from" se quiser rebuild sem cache)
+    container_name: battleship-api-prod
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/battleship
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,https://app.battleship.com}
+      WEBSOCKET_ALLOWED_ORIGINS: ${WEBSOCKET_ALLOWED_ORIGINS:-http://localhost:3000,https://app.battleship.com}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - battleship-network-prod
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  battleship-frontend:
+    # Em AWS, substitua por:
+    # image: <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/battleship-frontend:latest
+    build:
+      context: ./battleship_app
+      dockerfile: Dockerfile
+      # Forçar rebuild a cada execução
+      # (remova "cache_from" se quiser rebuild sem cache)
+    container_name: battleship-frontend-prod
+    ports:
+      - "80:80"
+    environment:
+      API_UPSTREAM: http://battleship-api:8080
+    depends_on:
+      battleship-api:
+        condition: service_started
+    networks:
+      - battleship-network-prod
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:80/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data_prod:
+  redis_data:
+
+networks:
+  battleship-network-prod:
+    driver: bridge

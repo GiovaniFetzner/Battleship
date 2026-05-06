@@ -280,7 +280,6 @@ function scheduleAttackResultFallback(key) {
 }
 
 function requestStateResync(reason) {
-    console.warn("Solicitando resync via REST:", reason);
     fetchGameState();
 }
 
@@ -321,7 +320,13 @@ function processAttackResult(eventData) {
     pendingAttacks.delete(key);
     clearAttackResultFallback(key);
 
-    console.log("Attack processed:", { x, y, result, wasMyAttack, boardType: wasMyAttack ? "opponent" : "player" });
+    // Increment local attack counter ONLY for own attacks
+    // This tracks number of attacks I made (not global turn counter)
+    if (wasMyAttack) {
+        localMyAttacksCount++;
+        sessionStorage.setItem("localMyAttacksCount", localMyAttacksCount.toString());
+    }
+
     return true;
 }
 
@@ -846,6 +851,30 @@ function recomputeLocalShipsDamageFromBoardHits() {
     }
 }
 
+function syncCurrentGameStateFromLocalState() {
+    if (!currentGameState) {
+        return;
+    }
+
+    currentGameState.myShips = buildLocalHudShips();
+    currentGameState.myShipsRemaining = getShipsRemainingForHud(currentGameState, currentGameState.myShips);
+    currentGameState.myAttacksCount = myAttackResults.size;
+}
+
+function getHudMyAttacksCount(gameState) {
+    // Prioritize local counter (increments only for own attacks)
+    if (localMyAttacksCount > 0) {
+        return localMyAttacksCount;
+    }
+
+    if (Number.isInteger(gameState?.myAttacksCount)) {
+        return gameState.myAttacksCount;
+    }
+
+    // Fallback to counting own attacks from myAttackResults
+    return myAttackResults.size;
+}
+
 function applyAttackToLocalShips(eventData) {
     if (!eventData || (eventData.type !== "ATTACK_RESULT" && eventData.type !== "attack_result")) {
         return;
@@ -869,6 +898,7 @@ function applyAttackToLocalShips(eventData) {
 
     recomputeLocalShipsDamageFromBoardHits();
     persistLocalShipsState();
+    syncCurrentGameStateFromLocalState();
 }
 
 function buildLocalHudShips() {
@@ -888,10 +918,9 @@ function isApiShipsListReliable(apiShips) {
 
     const expectedSizes = new Set([2, 3, 4, 5]);
 
-    return apiShips.every(ship => {
-        const name = String(ship?.name || "").trim().toLowerCase();
+    return apiShips.length === Object.keys(SHIP_SIZES).length && apiShips.every(ship => {
         const size = Number(ship?.size);
-        return name && name !== "persisted" && expectedSizes.has(size);
+        return expectedSizes.has(size);
     });
 }
 
@@ -905,7 +934,10 @@ function getShipsForHud(gameState) {
 }
 
 function getShipsRemainingForHud(gameState, ships) {
-    if (Number.isInteger(gameState?.myShipsRemaining)) {
+    // Confia no myShipsRemaining vindo do servidor somente quando a lista de navios da API
+    // parece confiável. Isso evita que um valor salvo ou desatualizado (ex: 1) se sobreponha
+    // à contagem local correta baseada em `ships`.
+    if (Number.isInteger(gameState?.myShipsRemaining) && isApiShipsListReliable(gameState?.myShips)) {
         return gameState.myShipsRemaining;
     }
 
@@ -960,6 +992,7 @@ let lastRenderedGameStatus = null;
 let phaseTransitionTimeoutId = null;
 let lastRenderedMyTurn = null;
 let myTurnBlinkTimeoutId = null;
+let localMyAttacksCount = 0;
 
 const gameLog = document.getElementById("gameLog");
 
@@ -972,6 +1005,8 @@ if (!playerName || !gameId) {
 } else {
     hydrateReadyConfirmedState();
     hydrateLocalShipsState();
+    const savedAttacksCount = sessionStorage.getItem("localMyAttacksCount");
+    localMyAttacksCount = savedAttacksCount ? parseInt(savedAttacksCount, 10) : 0;
     buildBoard();
     restorePlacedShipsFromLocalState();
 
@@ -1010,7 +1045,18 @@ function openWebSocket() {
 
             console.log("WebSocket message:", data);
 
+
+            // Sempre que receber um estado de jogo completo, renderiza o HUD imediatamente
+            if (data.gameStatus && data.player1Name && data.player2Name) {
+                renderHud(data, playerName);
+                return;
+            }
+
             if (data.type === "GAME_STATE_UPDATED") {
+                // Log para depuração: quem recebeu o evento e payload
+                console.log("Received GAME_STATE_UPDATED via websocket:", data);
+                console.log("currentGameState before resync:", currentGameState);
+                // Mensagem de atualização: busca o estado mais recente e renderiza ao receber
                 requestStateResync("evento GAME_STATE_UPDATED");
                 return;
             }
@@ -1022,10 +1068,11 @@ function openWebSocket() {
                     persistReadyConfirmedState();
                 }
                 updateReadyButtonState();
-                if (!currentGameState) {
-                    requestStateResync("estado ausente em PLAYER_READY");
+                // Se vier o estado junto, renderiza; senão, busca
+                if (data.gameStatus && data.player1Name && data.player2Name) {
+                    renderHud(data, playerName);
                 } else {
-                    renderHud(currentGameState, playerName);
+                    requestStateResync("estado ausente em PLAYER_READY");
                 }
                 return;
             }
@@ -1035,13 +1082,11 @@ function openWebSocket() {
                 isPlayerReadyConfirmed = true;
                 persistReadyConfirmedState();
                 updateReadyButtonState();
-                if (!currentGameState) {
-                    requestStateResync("estado ausente em GAME_START");
+                // Se vier o estado junto, renderiza; senão, busca
+                if (data.gameStatus && data.player1Name && data.player2Name) {
+                    renderHud(data, playerName);
                 } else {
-                    currentGameState.gameStatus = "IN_PROGRESS";
-                    currentGameState.currentPlayer = data.firstPlayer;
-                    currentGameState.myTurn = data.firstPlayer === playerName;
-                    renderHud(currentGameState, playerName);
+                    requestStateResync("estado ausente em GAME_START");
                 }
                 return;
             }
@@ -1055,18 +1100,29 @@ function openWebSocket() {
                     return;
                 }
 
-                if (!currentGameState) {
-                    requestStateResync("estado ausente apos ATTACK_RESULT");
-                    return;
-                }
+                // Se vier o estado junto, renderiza; senão, atualiza campos mínimos
+                if (data.gameStatus && data.player1Name && data.player2Name) {
+                    renderHud(data, playerName);
+                } else if (currentGameState) {
+                    currentGameState.currentPlayer = data.currentPlayer;
+                    currentGameState.myTurn = data.currentPlayer === playerName;
+                    if (data.gameOver === true) {
+                        currentGameState.gameStatus = "FINISHED";
+                        currentGameState.winner = data.winner || null;
+                    }
+                    syncCurrentGameStateFromLocalState();
+                    renderHud(currentGameState, playerName);
 
-                currentGameState.currentPlayer = data.currentPlayer;
-                currentGameState.myTurn = data.currentPlayer === playerName;
-                if (data.gameOver === true) {
-                    currentGameState.gameStatus = "FINISHED";
-                    currentGameState.winner = data.winner || null;
+                    // Force authoritative resync via REST to ensure creator receives full updated snapshot
+                    // (helps when some HUD fields are only present in the REST response)
+                    try {
+                        fetchGameState();
+                    } catch (e) {
+                        console.error('Failed to fetch game state after ATTACK_RESULT', e);
+                    }
+                } else {
+                    requestStateResync("estado ausente apos ATTACK_RESULT");
                 }
-                renderHud(currentGameState, playerName);
                 return;
             }
 
@@ -1086,6 +1142,7 @@ function openWebSocket() {
                     sessionStorage.removeItem("playerName");
                     sessionStorage.removeItem("gameId");
                     sessionStorage.removeItem("gameState");
+                    sessionStorage.removeItem("localMyAttacksCount");
 
                     alert(data.message + "\nSerá redirecionado para a página inicial.");
                     window.location.href = "index.html";
@@ -1093,10 +1150,6 @@ function openWebSocket() {
 
                 requestStateResync("evento ERROR via websocket");
                 return;
-            }
-
-            if (data.gameStatus && data.player1Name && data.player2Name) {
-                renderHud(data, playerName);
             }
 
         } catch (error) {
@@ -1232,6 +1285,7 @@ function renderHud(gameState, displayName) {
             sessionStorage.removeItem("gameId");
             sessionStorage.removeItem("gameState");
             sessionStorage.removeItem(getReadyConfirmedStorageKey());
+            sessionStorage.removeItem("localMyAttacksCount");
         }, 5000);
     }
 
@@ -1260,9 +1314,8 @@ function renderHud(gameState, displayName) {
 
     lastRenderedMyTurn = currentMyTurn;
 
-    const myAttacksCount = Number.isInteger(gameState?.myAttacksCount)
-        ? gameState.myAttacksCount
-        : myAttackResults.size;
+    // "Meus Ataques" = number of attacks I made (not global turn counter)
+    const myAttacksCount = getHudMyAttacksCount(gameState);
     hudMyAttacks.textContent = myAttacksCount.toString();
 
     if (waitingMessage) {
@@ -1273,12 +1326,52 @@ function renderHud(gameState, displayName) {
 
     updateReadyButtonState(gameState.gameStatus);
 
-    hudShips.innerHTML = "";
     const ships = getShipsForHud(gameState);
     const shipsRemaining = getShipsRemainingForHud(gameState, ships);
     hudShipsRemaining.textContent = shipsRemaining === null ? "-" : shipsRemaining.toString();
 
+    if (gameState === currentGameState) {
+        currentGameState.myShips = ships;
+        currentGameState.myShipsRemaining = shipsRemaining === null ? currentGameState.myShipsRemaining : shipsRemaining;
+        currentGameState.myAttacksCount = myAttackResults.size;
+    }
+
+    renderHudShips(ships, gameState.gameStatus);
+}
+
+function buildShipRow(ship, gameStatus) {
+    const row = document.createElement("tr");
+
+    // Usa o nome como chave de identificação (é único por navio)
+    row.dataset.ship = ship?.name ?? "desconhecido";
+
+    const tdName = document.createElement("td");
+    tdName.textContent = ship?.name ?? "Desconhecido";
+
+    const tdSize = document.createElement("td");
+    tdSize.textContent = typeof ship?.size === "number" ? ship.size : "-";
+
+    const tdHits = document.createElement("td");
+    tdHits.dataset.field = "hits";
+    tdHits.textContent = typeof ship?.hits === "number" ? ship.hits : "-";
+
+    const tdStatus = document.createElement("td");
+    tdStatus.dataset.field = "status";
+    tdStatus.textContent = getShipStatusLabel(ship, gameStatus);
+
+    row.appendChild(tdName);
+    row.appendChild(tdSize);
+    row.appendChild(tdHits);
+    row.appendChild(tdStatus);
+
+    return row;
+}
+
+function renderHudShips(ships, gameStatus) {
+    if (!hudShips) return;
+
     if (ships.length === 0) {
+        hudShips.innerHTML = "";
         const emptyRow = document.createElement("tr");
         const emptyCell = document.createElement("td");
         emptyCell.colSpan = 4;
@@ -1288,20 +1381,35 @@ function renderHud(gameState, displayName) {
         return;
     }
 
-    ships.forEach(ship => {
-        const row = document.createElement("tr");
-        const shipName = ship?.name ?? "Desconhecido";
-        const size = typeof ship?.size === "number" ? ship.size : "-";
-        const hits = typeof ship?.hits === "number" ? ship.hits : "-";
-        const destroyed = getShipStatusLabel(ship, gameState.gameStatus);
+    const existingRows = hudShips.querySelectorAll("tr[data-ship]");
 
-        row.innerHTML = `
-            <td>${shipName}</td>
-            <td>${size}</td>
-            <td>${hits}</td>
-            <td>${destroyed}</td>
-        `;
-        hudShips.appendChild(row);
+    if (existingRows.length !== ships.length) {
+        hudShips.innerHTML = "";
+        ships.forEach(ship => {
+            hudShips.appendChild(buildShipRow(ship, gameStatus));
+        });
+        return;
+    }
+
+    ships.forEach(ship => {
+        const shipName = ship?.name ?? "desconhecido";
+        const row = hudShips.querySelector(`tr[data-ship="${shipName}"]`);
+        if (!row) return;
+
+        const newHits = typeof ship?.hits === "number" ? String(ship.hits) : "-";
+        const newStatus = getShipStatusLabel(ship, gameStatus);
+
+        const tdHits = row.querySelector('[data-field="hits"]');
+        const tdStatus = row.querySelector('[data-field="status"]');
+
+        // Toca no DOM só se o valor realmente mudou
+        if (tdHits && tdHits.textContent !== newHits) {
+            tdHits.textContent = newHits;
+        }
+
+        if (tdStatus && tdStatus.textContent !== newStatus) {
+            tdStatus.textContent = newStatus;
+        }
     });
 }
 
@@ -1538,6 +1646,7 @@ if (gameOverHomeButton) {
         sessionStorage.removeItem("gameId");
         sessionStorage.removeItem("gameState");
         sessionStorage.removeItem(getReadyConfirmedStorageKey());
+        sessionStorage.removeItem("localMyAttacksCount");
         window.location.href = "index.html";
     });
 }
@@ -1545,8 +1654,12 @@ if (gameOverHomeButton) {
 
 async function fetchGameState() {
     try {
+        const cacheBust = Date.now();
         const response = await fetch(
-            `${window.BattleshipConfig.resolveApiUrl(gameId)}?playerName=${encodeURIComponent(playerName)}`
+            `${window.BattleshipConfig.resolveApiUrl(gameId)}?playerName=${encodeURIComponent(playerName)}&_=${cacheBust}`,
+            {
+                cache: "no-store"
+            }
         );
 
         if (!response.ok) {
