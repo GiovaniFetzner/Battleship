@@ -2,6 +2,7 @@ package com.example.battleship.controller;
 
 import com.example.battleship.domain.map.AttackResult;
 import com.example.battleship.domain.game.Game;
+import com.example.battleship.dto.webSocket.inbound.GameMessageType;
 import com.example.battleship.webSocket.GameEventBroadcaster;
 import com.example.battleship.dto.webSocket.inbound.GameMessage;
 import com.example.battleship.dto.webSocket.outbound.*;
@@ -57,7 +58,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        // Validar se o jogo já terminou
         if (gameService.isGameOver(gameId)) {
             ErrorResponse error = new ErrorResponse(gameId,
                     "Este jogo já foi finalizado. Por favor, crie um novo jogo.");
@@ -89,6 +89,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             if (baseMessage.getType() == null) {
                 throw new IllegalArgumentException("Message type is required");
+            }
+
+            if (baseMessage.getType() == GameMessageType.PING ||
+                    baseMessage.getType() == GameMessageType.PONG) {
+                return;
             }
 
             broadcaster.register(

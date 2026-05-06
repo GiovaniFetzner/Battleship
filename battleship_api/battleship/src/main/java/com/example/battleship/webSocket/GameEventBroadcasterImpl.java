@@ -36,6 +36,10 @@ public class GameEventBroadcasterImpl implements GameEventBroadcaster {
     private static final String PLAYER_CHANNEL_PREFIX = "ws:game:";
     private static final String PLAYER_CHANNEL_SEPARATOR = ":player:";
 
+    // Heartbeat configuration
+    private static final long HEARTBEAT_INTERVAL_SECONDS = 25;
+    private static final String HEARTBEAT_MESSAGE = "{\"type\":\"PING\"}";
+
     // gameId → (playerId → session)
     private final Map<String, Map<String, WebSocketSession>> sessions = new ConcurrentHashMap<>();
 
@@ -56,6 +60,7 @@ public class GameEventBroadcasterImpl implements GameEventBroadcaster {
         this.redisMessageListener = this::onRedisMessage;
         this.scheduler = Executors.newScheduledThreadPool(1);
         startInactivityMonitor();
+        startHeartbeat();
     }
 
     private void startInactivityMonitor() {
@@ -296,5 +301,21 @@ public class GameEventBroadcasterImpl implements GameEventBroadcaster {
     }
 
     private record ChannelTarget(String gameId, String playerName) {
+    }
+
+    private void startHeartbeat() {
+        scheduler.scheduleAtFixedRate(
+                this::sendHeartbeatToAll,
+                HEARTBEAT_INTERVAL_SECONDS,
+                HEARTBEAT_INTERVAL_SECONDS,
+                TimeUnit.SECONDS);
+    }
+
+    private void sendHeartbeatToAll() {
+        sessions.forEach((gameId, playerSessions) -> playerSessions.forEach((playerName, session) -> {
+            if (session != null && session.isOpen()) {
+                send(session, HEARTBEAT_MESSAGE);
+            }
+        }));
     }
 }
