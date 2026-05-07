@@ -6,7 +6,7 @@
 services:
   redis:
     image: redis:7-alpine
-    container_name: battleship-redis
+    container_name: battleship-redis-dev
     ports:
       - "6379:6379"
     networks:
@@ -19,7 +19,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    container_name: battleship-postgres
+    container_name: battleship-postgres-dev
     environment:
       POSTGRES_DB: battleship
       POSTGRES_USER: postgres
@@ -36,8 +36,46 @@ services:
     networks:
       - battleship-network
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: battleship-prometheus-dev
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    networks:
+      - battleship-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: battleship-grafana-dev
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_LOG_LEVEL: info
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    networks:
+      - battleship-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   battleship-network:

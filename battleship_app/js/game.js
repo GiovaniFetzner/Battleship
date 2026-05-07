@@ -237,6 +237,8 @@ function showGameOverOverlay(gameState, playerName) {
         return;
     }
 
+    stopReconnectLoop();
+
     const winner = gameState?.winner;
     const isPlayerWinner = winner === playerName;
 
@@ -993,6 +995,13 @@ let phaseTransitionTimeoutId = null;
 let lastRenderedMyTurn = null;
 let myTurnBlinkTimeoutId = null;
 let localMyAttacksCount = 0;
+let reconnectTimerId = null;
+let reconnectAttempts = 0;
+let reconnectDisabled = false;
+
+const RECONNECT_BASE_DELAY_MS = 1000;
+const RECONNECT_MAX_DELAY_MS = 15000;
+const RECONNECT_MAX_ATTEMPTS = 8;
 
 const gameLog = document.getElementById("gameLog");
 
@@ -1022,7 +1031,49 @@ if (!playerName || !gameId) {
     bindCopyGameId();
 }
 
+window.addEventListener("beforeunload", () => {
+    reconnectDisabled = true;
+    clearReconnectTimer();
+});
+
+function clearReconnectTimer() {
+    if (reconnectTimerId !== null) {
+        clearTimeout(reconnectTimerId);
+        reconnectTimerId = null;
+    }
+}
+
+function stopReconnectLoop() {
+    reconnectDisabled = true;
+    reconnectAttempts = 0;
+    clearReconnectTimer();
+}
+
+function scheduleReconnect(reason) {
+    if (reconnectDisabled) {
+        return;
+    }
+
+    if (reconnectTimerId !== null || reconnectAttempts >= RECONNECT_MAX_ATTEMPTS) {
+        return;
+    }
+
+    reconnectAttempts += 1;
+    const delay = Math.min(RECONNECT_BASE_DELAY_MS * (2 ** (reconnectAttempts - 1)), RECONNECT_MAX_DELAY_MS);
+
+    socketStatus.textContent = `Reconectando em ${Math.ceil(delay / 1000)}s`;
+    console.log(`WebSocket caiu (${reason}); nova tentativa em ${delay}ms`);
+
+    reconnectTimerId = window.setTimeout(() => {
+        reconnectTimerId = null;
+        openWebSocket();
+    }, delay);
+}
+
 function openWebSocket() {
+    reconnectDisabled = false;
+    clearReconnectTimer();
+
     gameSocket = new WebSocket(
         window.BattleshipConfig.resolveWebSocketUrl("/ws/game", {
             gameId,
@@ -1033,6 +1084,7 @@ function openWebSocket() {
     gameSocket.addEventListener("open", () => {
         socketStatus.textContent = "Conectado";
         console.log("WebSocket conectado");
+        reconnectAttempts = 0;
         updateReadyButtonState();
         fetchGameState();
     });
@@ -1044,6 +1096,20 @@ function openWebSocket() {
             const data = JSON.parse(event.data);
 
             console.log("WebSocket message:", data);
+
+            if (data.type === "PING") {
+                try {
+                    sendGameMessage({
+                        type: "PONG",
+                        gameId,
+                        playerName
+                    });
+                } catch (error) {
+                    console.error("Falha ao responder heartbeat:", error);
+                }
+
+                return;
+            }
 
 
             // Sempre que receber um estado de jogo completo, renderiza o HUD imediatamente
@@ -1139,6 +1205,7 @@ function openWebSocket() {
 
                 // Se o erro for sobre jogo finalizado, limpar sessionStorage e redirecionar
                 if (data.message && data.message.includes("finalizado")) {
+                    stopReconnectLoop();
                     sessionStorage.removeItem("playerName");
                     sessionStorage.removeItem("gameId");
                     sessionStorage.removeItem("gameState");
@@ -1159,8 +1226,15 @@ function openWebSocket() {
     });
 
     gameSocket.addEventListener("close", () => {
+        if (reconnectDisabled) {
+            socketStatus.textContent = "Desconectado";
+            updateReadyButtonState();
+            return;
+        }
+
         socketStatus.textContent = "Desconectado";
         updateReadyButtonState();
+        scheduleReconnect("close");
     });
 
     gameSocket.addEventListener("error", () => {

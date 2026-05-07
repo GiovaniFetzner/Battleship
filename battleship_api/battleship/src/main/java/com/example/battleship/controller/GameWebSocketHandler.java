@@ -3,6 +3,7 @@ package com.example.battleship.controller;
 import com.example.battleship.domain.map.AttackResult;
 import com.example.battleship.domain.game.Game;
 import com.example.battleship.dto.webSocket.inbound.GameMessageType;
+import com.example.battleship.webSocket.GameWebSocketMetrics;
 import com.example.battleship.webSocket.GameEventBroadcaster;
 import com.example.battleship.dto.webSocket.inbound.GameMessage;
 import com.example.battleship.dto.webSocket.outbound.*;
@@ -23,13 +24,16 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private final GameService gameService;
     private final ObjectMapper objectMapper;
     private final GameEventBroadcaster broadcaster;
+    private final GameWebSocketMetrics gameWebSocketMetrics;
 
     public GameWebSocketHandler(GameService gameService,
             ObjectMapper objectMapper,
-            GameEventBroadcaster broadcaster) {
+            GameEventBroadcaster broadcaster,
+            GameWebSocketMetrics gameWebSocketMetrics) {
         this.gameService = gameService;
         this.objectMapper = objectMapper;
         this.broadcaster = broadcaster;
+        this.gameWebSocketMetrics = gameWebSocketMetrics;
     }
 
     @Override
@@ -93,6 +97,19 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
             if (baseMessage.getType() == GameMessageType.PING ||
                     baseMessage.getType() == GameMessageType.PONG) {
+                broadcaster.register(
+                        baseMessage.getGameId(),
+                        baseMessage.getPlayerName(),
+                        session);
+
+                broadcaster.updateActivityTime(
+                        baseMessage.getGameId(),
+                        baseMessage.getPlayerName());
+
+                if (baseMessage.getType() == GameMessageType.PONG) {
+                    gameWebSocketMetrics.recordHeartbeatAck();
+                }
+
                 return;
             }
 

@@ -31,6 +31,7 @@ public class GameEventBroadcasterImpl implements GameEventBroadcaster {
     private final StringRedisTemplate redisTemplate;
     private final RedisMessageListenerContainer redisListenerContainer;
     private final MessageListener redisMessageListener;
+    private final GameWebSocketMetrics gameWebSocketMetrics;
     private static final long INACTIVITY_TIMEOUT_MINUTES = 5;
     private static final long CHECK_INTERVAL_MINUTES = 1;
     private static final String PLAYER_CHANNEL_PREFIX = "ws:game:";
@@ -53,10 +54,12 @@ public class GameEventBroadcasterImpl implements GameEventBroadcaster {
 
     public GameEventBroadcasterImpl(ObjectMapper objectMapper,
             StringRedisTemplate redisTemplate,
-            RedisMessageListenerContainer redisListenerContainer) {
+            RedisMessageListenerContainer redisListenerContainer,
+            GameWebSocketMetrics gameWebSocketMetrics) {
         this.objectMapper = objectMapper;
         this.redisTemplate = redisTemplate;
         this.redisListenerContainer = redisListenerContainer;
+        this.gameWebSocketMetrics = gameWebSocketMetrics;
         this.redisMessageListener = this::onRedisMessage;
         this.scheduler = Executors.newScheduledThreadPool(1);
         startInactivityMonitor();
@@ -95,6 +98,7 @@ public class GameEventBroadcasterImpl implements GameEventBroadcaster {
 
     private void closeInactiveSession(String gameId, String playerName, WebSocketSession session) {
         try {
+            gameWebSocketMetrics.recordInactiveSessionClosed();
             session.close(CloseStatus.SESSION_NOT_RELIABLE);
             removeSession(session);
             System.out.println("Sessão inativa fechada - GameID: " + gameId + ", Player: " + playerName);
@@ -113,6 +117,7 @@ public class GameEventBroadcasterImpl implements GameEventBroadcaster {
                 .put(playerName, System.currentTimeMillis());
 
         if (isNewRegistration) {
+            gameWebSocketMetrics.recordSessionRegistered();
             // Subscribe to broadcast channel for this game so we receive events for all
             // players
             subscribeToPlayerChannel(gameId, playerName);
@@ -167,6 +172,7 @@ public class GameEventBroadcasterImpl implements GameEventBroadcaster {
                 }
 
                 playerMap.remove(playerName);
+                gameWebSocketMetrics.recordSessionClosed();
                 Map<String, Long> activityMap = lastActivityTime.get(gameId);
                 if (activityMap != null) {
                     activityMap.remove(playerName);
@@ -314,6 +320,7 @@ public class GameEventBroadcasterImpl implements GameEventBroadcaster {
     private void sendHeartbeatToAll() {
         sessions.forEach((gameId, playerSessions) -> playerSessions.forEach((playerName, session) -> {
             if (session != null && session.isOpen()) {
+                gameWebSocketMetrics.recordHeartbeatSent();
                 send(session, HEARTBEAT_MESSAGE);
             }
         }));
