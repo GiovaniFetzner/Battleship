@@ -45,7 +45,7 @@ docker-compose up -d
 ```
 
 Servicos iniciados:
-- PostgreSQL: localhost:5432
+- PostgreSQL: localhost:5433 (para evitar conflito com PostgreSQL local, se houver)
 - Redis: localhost:6379
 
 #### 2. Subir backend
@@ -84,7 +84,7 @@ docker-compose -f docker-compose.prod.yml up -d
 ```
 
 Servicos iniciados:
-- PostgreSQL: localhost:5432
+- PostgreSQL: localhost:5433
 - Redis: localhost:6379
 - Backend API: http://localhost:8080
 - Frontend: http://localhost:80
